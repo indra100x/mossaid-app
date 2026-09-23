@@ -8,9 +8,18 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_session
 from app.core.deps import CurrentUser
+from app.core.storage import generate_presigned_url
 from app.models.craftsman_profile import CraftsmanProfile
 from app.models.user import User
-from app.modules.users.schemas import CraftsmanProfileOut, UserOut, UserUpdateIn
+from app.models.verification_document import VerificationDocument
+from app.modules.users.schemas import (
+    CraftsmanProfileOut,
+    RequestUploadOut,
+    UserOut,
+    UserUpdateIn,
+    VerificationOut,
+    VerificationRequestIn,
+)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -111,6 +120,32 @@ async def update_me(
     )
     user2 = result2.scalar_one()
     return _to_user_out(user2)
+
+
+@router.post("/me/verification/request-upload", response_model=RequestUploadOut, status_code=status.HTTP_201_CREATED)
+async def request_verification_upload(
+    payload: VerificationRequestIn,
+    current_user: CurrentUser,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> RequestUploadOut:
+    if current_user.role != "craftsman":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only craftsmen can upload verification")
+    upload_url, file_url = generate_presigned_url(str(current_user.id), payload.doc_type, payload.file_name)
+    doc = VerificationDocument(user_id=current_user.id, doc_type=payload.doc_type, file_url=file_url, status="pending")
+    session.add(doc)
+    await session.commit()
+    await session.refresh(doc)
+    return RequestUploadOut(document=VerificationOut.model_validate(doc), upload_url=upload_url, file_url=file_url)
+
+
+@router.get("/me/verification", response_model=list[VerificationOut])
+async def list_my_verification(
+    current_user: CurrentUser,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[VerificationOut]:
+    result = await session.execute(select(VerificationDocument).where(VerificationDocument.user_id == current_user.id).order_by(VerificationDocument.created_at.desc()))
+    docs = result.scalars().all()
+    return [VerificationOut.model_validate(d) for d in docs]
 
 
 @router.get("/{user_id}", response_model=UserOut)

@@ -297,6 +297,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Validation failed'**
   String get validationFailed;
+
+  /// No description provided for @verificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification'**
+  String get verificationTitle;
+
+  /// No description provided for @verificationDocType.
+  ///
+  /// In en, this message translates to:
+  /// **'Document type'**
+  String get verificationDocType;
+
+  /// No description provided for @verificationFileName.
+  ///
+  /// In en, this message translates to:
+  /// **'File name'**
+  String get verificationFileName;
+
+  /// No description provided for @verificationUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get verificationUpload;
+
+  /// No description provided for @verificationStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get verificationStatus;
+
+  /// No description provided for @verifiedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get verifiedBadge;
+
+  /// No description provided for @reviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave a review'**
+  String get reviewTitle;
+
+  /// No description provided for @reviewRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating (1-5)'**
+  String get reviewRating;
+
+  /// No description provided for @reviewComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment'**
+  String get reviewComment;
+
+  /// No description provided for @reviewSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit review'**
+  String get reviewSubmit;
+
+  /// No description provided for @reviewSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Review submitted'**
+  String get reviewSuccess;
+
+  /// No description provided for @chatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get chatTitle;
+
+  /// No description provided for @chatPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a message'**
+  String get chatPlaceholder;
+
+  /// No description provided for @chatSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get chatSend;
+
+  /// No description provided for @chatTyping.
+  ///
+  /// In en, this message translates to:
+  /// **'Typing...'**
+  String get chatTyping;
+
+  /// No description provided for @chatRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Read'**
+  String get chatRead;
 }
 
 class _AppLocalizationsDelegate

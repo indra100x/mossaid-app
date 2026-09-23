@@ -32,5 +32,21 @@
   "searchNoResults": "لم يتم العثور على حرفيين",
   "bookingSuccess": "تم إرسال الطلب",
   "authFailed": "فشل تسجيل الدخول",
-  "validationFailed": "فشل التحقق"
+  "validationFailed": "فشل التحقق",
+  "verificationTitle": "التحقق",
+  "verificationDocType": "نوع المستند",
+  "verificationFileName": "اسم الملف",
+  "verificationUpload": "رفع",
+  "verificationStatus": "الحالة",
+  "verifiedBadge": "موثق",
+  "reviewTitle": "ترك تقييم",
+  "reviewRating": "التقييم (1-5)",
+  "reviewComment": "تعليق",
+  "reviewSubmit": "إرسال التقييم",
+  "reviewSuccess": "تم إرسال التقييم",
+  "chatTitle": "الدردشة",
+  "chatPlaceholder": "اكتب رسالة",
+  "chatSend": "إرسال",
+  "chatTyping": "يكتب...",
+  "chatRead": "مقروء"
 }

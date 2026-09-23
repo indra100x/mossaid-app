@@ -30,12 +30,14 @@ class BookingOut(BaseModel):
 
 
 class BookingStatusUpdateIn(BaseModel):
-    action: Literal["accept", "decline", "schedule", "cancel"]
+    action: Literal["accept", "decline", "schedule", "start", "complete", "cancel"]
 
 
 ACTION_TO_STATUS = {
     "accept": "accepted",
     "decline": "declined",
     "schedule": "scheduled",
+    "start": "in_progress",
+    "complete": "completed",
     "cancel": "cancelled",
 }

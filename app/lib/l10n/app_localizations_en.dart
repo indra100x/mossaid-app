@@ -106,4 +106,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get validationFailed => 'Validation failed';
+
+  @override
+  String get verificationTitle => 'Verification';
+
+  @override
+  String get verificationDocType => 'Document type';
+
+  @override
+  String get verificationFileName => 'File name';
+
+  @override
+  String get verificationUpload => 'Upload';
+
+  @override
+  String get verificationStatus => 'Status';
+
+  @override
+  String get verifiedBadge => 'Verified';
+
+  @override
+  String get reviewTitle => 'Leave a review';
+
+  @override
+  String get reviewRating => 'Rating (1-5)';
+
+  @override
+  String get reviewComment => 'Comment';
+
+  @override
+  String get reviewSubmit => 'Submit review';
+
+  @override
+  String get reviewSuccess => 'Review submitted';
+
+  @override
+  String get chatTitle => 'Chat';
+
+  @override
+  String get chatPlaceholder => 'Type a message';
+
+  @override
+  String get chatSend => 'Send';
+
+  @override
+  String get chatTyping => 'Typing...';
+
+  @override
+  String get chatRead => 'Read';
 }

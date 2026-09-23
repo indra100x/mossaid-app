@@ -63,3 +63,26 @@ class UserUpdateIn(BaseModel):
     language_pref: Literal["ar", "fr"] | None = None
     role: Literal["client", "craftsman"] | None = None
     craftsman_profile: CraftsmanProfileIn | None = None
+
+
+class VerificationRequestIn(BaseModel):
+    doc_type: Literal["id", "diploma", "trade_credential"] = Field(..., description="Document type")
+    file_name: str = Field(..., min_length=1, max_length=255, description="Original file name with extension")
+
+
+class VerificationOut(BaseModel):
+    id: UUID
+    user_id: UUID
+    doc_type: str
+    file_url: str
+    status: str
+    reviewed_by: UUID | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class RequestUploadOut(BaseModel):
+    document: VerificationOut
+    upload_url: str
+    file_url: str

@@ -106,4 +106,52 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get validationFailed => 'فشل التحقق';
+
+  @override
+  String get verificationTitle => 'التحقق';
+
+  @override
+  String get verificationDocType => 'نوع المستند';
+
+  @override
+  String get verificationFileName => 'اسم الملف';
+
+  @override
+  String get verificationUpload => 'رفع';
+
+  @override
+  String get verificationStatus => 'الحالة';
+
+  @override
+  String get verifiedBadge => 'موثق';
+
+  @override
+  String get reviewTitle => 'ترك تقييم';
+
+  @override
+  String get reviewRating => 'التقييم (1-5)';
+
+  @override
+  String get reviewComment => 'تعليق';
+
+  @override
+  String get reviewSubmit => 'إرسال التقييم';
+
+  @override
+  String get reviewSuccess => 'تم إرسال التقييم';
+
+  @override
+  String get chatTitle => 'الدردشة';
+
+  @override
+  String get chatPlaceholder => 'اكتب رسالة';
+
+  @override
+  String get chatSend => 'إرسال';
+
+  @override
+  String get chatTyping => 'يكتب...';
+
+  @override
+  String get chatRead => 'مقروء';
 }

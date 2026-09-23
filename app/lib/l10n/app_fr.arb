@@ -32,5 +32,21 @@
   "searchNoResults": "Aucun artisan trouvé",
   "bookingSuccess": "Réservation demandée",
   "authFailed": "Échec d'authentification",
-  "validationFailed": "Échec de validation"
+  "validationFailed": "Échec de validation",
+  "verificationTitle": "Vérification",
+  "verificationDocType": "Type de document",
+  "verificationFileName": "Nom du fichier",
+  "verificationUpload": "Télécharger",
+  "verificationStatus": "Statut",
+  "verifiedBadge": "Vérifié",
+  "reviewTitle": "Laisser un avis",
+  "reviewRating": "Note (1-5)",
+  "reviewComment": "Commentaire",
+  "reviewSubmit": "Envoyer l'avis",
+  "reviewSuccess": "Avis envoyé",
+  "chatTitle": "Chat",
+  "chatPlaceholder": "Tapez un message",
+  "chatSend": "Envoyer",
+  "chatTyping": "En train d'écrire...",
+  "chatRead": "Lu"
 }

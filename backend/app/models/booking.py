@@ -7,14 +7,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 
-# Phase 0 state machine subset, extensible for later phases
-BOOKING_STATUSES = {"requested", "accepted", "declined", "scheduled", "cancelled"}
-# Valid transitions for Phase 0
+# Phase 1 state machine — adds in_progress → completed for reviews/trust layer
+BOOKING_STATUSES = {"requested", "accepted", "declined", "scheduled", "in_progress", "completed", "cancelled"}
 VALID_TRANSITIONS: dict[str, set[str]] = {
     "requested": {"accepted", "declined", "cancelled"},
     "accepted": {"scheduled", "cancelled"},
     "declined": set(),
-    "scheduled": {"cancelled"},
+    "scheduled": {"in_progress", "cancelled"},
+    "in_progress": {"completed", "cancelled"},
+    "completed": set(),
     "cancelled": set(),
 }
 

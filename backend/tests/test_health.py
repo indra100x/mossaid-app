@@ -18,9 +18,15 @@ def test_health_db() -> None:
 
 
 def test_placeholder_modules_still_not_implemented() -> None:
-    # Phase 0 implements auth, users, discovery, bookings — these no longer return placeholder
-    # Remaining Phase 1-3 modules should still be placeholders
-    for mod in ["chat", "payments", "reviews", "notifications", "admin"]:
+    # Phase 0 implements auth, users, discovery, bookings
+    # Phase 1 implements reviews (list), chat (messages), verification (admin) — those no longer return placeholder on /
+    # Remaining still placeholders: payments, notifications, and chat/admin root still placeholder
+    for mod in ["payments", "notifications"]:
+        resp = client.get(f"/api/v1/{mod}/")
+        assert resp.status_code == 200, f"{mod} failed: {resp.text}"
+        assert resp.json()["module"] == mod
+    # chat and admin root still placeholder (even though they have sub-routes)
+    for mod in ["chat", "admin"]:
         resp = client.get(f"/api/v1/{mod}/")
         assert resp.status_code == 200, f"{mod} failed: {resp.text}"
         assert resp.json()["module"] == mod

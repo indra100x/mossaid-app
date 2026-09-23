@@ -15,6 +15,7 @@ class CraftsmanSearchOut(BaseModel):
     longitude: float | None
     service_radius_km: int
     distance_km: float | None = None
+    verification_status: str = "pending"
 
     model_config = {"from_attributes": True}
 

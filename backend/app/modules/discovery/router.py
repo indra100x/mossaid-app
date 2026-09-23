@@ -131,6 +131,7 @@ async def search_craftsmen(
                     longitude=prof.longitude,
                     service_radius_km=prof.service_radius_km,
                     distance_km=round(dist, 2),
+                    verification_status=prof.verification_status,
                 )
             )
         return SearchResponse(items=items, total=total, limit=limit, offset=offset)
@@ -161,6 +162,7 @@ async def search_craftsmen(
                 longitude=prof.longitude,
                 service_radius_km=prof.service_radius_km,
                 distance_km=round(dist, 2) if dist is not None and radius_km is not None else None,
+                verification_status=prof.verification_status,
             )
         )
 

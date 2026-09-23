@@ -110,16 +110,22 @@ async def update_booking_status(
 
     new_status = ACTION_TO_STATUS[payload.action]
 
-    # Role guards for Phase 0
+    # Role guards — Phase 1 extends to start/complete
     if payload.action in ("accept", "decline"):
         if current_user.id != booking.craftsman_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only craftsman can accept/decline")
     elif payload.action == "schedule":
         if current_user.id != booking.craftsman_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only craftsman can schedule")
+    elif payload.action == "start":
+        if current_user.id != booking.craftsman_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only craftsman can start")
+    elif payload.action == "complete":
+        # either participant can mark completed after in_progress
+        pass
     elif payload.action == "cancel":
         # either can cancel before scheduled
-        if booking.status in ("declined", "cancelled"):
+        if booking.status in ("declined", "cancelled", "completed"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Already terminated")
 
     if not booking.can_transition(new_status):

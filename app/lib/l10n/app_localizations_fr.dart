@@ -107,4 +107,52 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get validationFailed => 'Échec de validation';
+
+  @override
+  String get verificationTitle => 'Vérification';
+
+  @override
+  String get verificationDocType => 'Type de document';
+
+  @override
+  String get verificationFileName => 'Nom du fichier';
+
+  @override
+  String get verificationUpload => 'Télécharger';
+
+  @override
+  String get verificationStatus => 'Statut';
+
+  @override
+  String get verifiedBadge => 'Vérifié';
+
+  @override
+  String get reviewTitle => 'Laisser un avis';
+
+  @override
+  String get reviewRating => 'Note (1-5)';
+
+  @override
+  String get reviewComment => 'Commentaire';
+
+  @override
+  String get reviewSubmit => 'Envoyer l\'avis';
+
+  @override
+  String get reviewSuccess => 'Avis envoyé';
+
+  @override
+  String get chatTitle => 'Chat';
+
+  @override
+  String get chatPlaceholder => 'Tapez un message';
+
+  @override
+  String get chatSend => 'Envoyer';
+
+  @override
+  String get chatTyping => 'En train d\'écrire...';
+
+  @override
+  String get chatRead => 'Lu';
 }

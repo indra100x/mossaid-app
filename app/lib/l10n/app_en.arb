@@ -32,5 +32,21 @@
   "searchNoResults": "No craftsmen found",
   "bookingSuccess": "Booking requested",
   "authFailed": "Authentication failed",
-  "validationFailed": "Validation failed"
+  "validationFailed": "Validation failed",
+  "verificationTitle": "Verification",
+  "verificationDocType": "Document type",
+  "verificationFileName": "File name",
+  "verificationUpload": "Upload",
+  "verificationStatus": "Status",
+  "verifiedBadge": "Verified",
+  "reviewTitle": "Leave a review",
+  "reviewRating": "Rating (1-5)",
+  "reviewComment": "Comment",
+  "reviewSubmit": "Submit review",
+  "reviewSuccess": "Review submitted",
+  "chatTitle": "Chat",
+  "chatPlaceholder": "Type a message",
+  "chatSend": "Send",
+  "chatTyping": "Typing...",
+  "chatRead": "Read"
 }
