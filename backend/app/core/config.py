@@ -16,5 +16,15 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 30
 
+    # Chargily Pay (sandbox) — pay-and-collect, escrow held in our Payment model per Phase 2 spec
+    chargily_api_key: str = "test_6f2d8e2a-1234-4a5b-9c9d-test_sandbox_key"
+    chargily_api_secret: str = "test_sandbox_secret_do_not_use_in_prod"
+    chargily_api_url: str = "https://pay.chargily.net/api/v2"
+    chargily_webhook_secret: str = "test_webhook_secret"
+    chargily_sandbox: bool = True
+
+    # Auto-release after completed with no dispute/release
+    auto_release_days: int = 7
+
 
 settings = Settings()

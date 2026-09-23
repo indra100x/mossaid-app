@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_session
 from app.core.deps import CurrentUser
 from app.models.craftsman_profile import CraftsmanProfile
+from app.models.payment import Dispute, Payment
 from app.models.verification_document import VerificationDocument
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -85,6 +86,49 @@ async def review_verification(
         "status": doc.status,
         "reviewed_by": str(doc.reviewed_by) if doc.reviewed_by else None,
     }
+
+
+@router.get("/disputes", response_model=list[dict[str, Any]])
+async def list_disputes(
+    current_user: CurrentUser,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[dict[str, Any]]:
+    require_admin(current_user)
+    result = await session.execute(select(Dispute).order_by(Dispute.created_at.desc()))
+    disputes = result.scalars().all()
+    return [
+        {
+            "id": str(d.id),
+            "payment_id": str(d.payment_id),
+            "booking_id": str(d.booking_id),
+            "raised_by": str(d.raised_by),
+            "reason": d.reason,
+            "status": d.status,
+            "created_at": d.created_at.isoformat(),
+        }
+        for d in disputes
+    ]
+
+
+@router.get("/payments", response_model=list[dict[str, Any]])
+async def list_payments_admin(
+    current_user: CurrentUser,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[dict[str, Any]]:
+    require_admin(current_user)
+    result = await session.execute(select(Payment).order_by(Payment.created_at.desc()))
+    payments = result.scalars().all()
+    return [
+        {
+            "id": str(p.id),
+            "booking_id": str(p.booking_id),
+            "amount": p.amount,
+            "status": p.status,
+            "gateway_checkout_id": p.gateway_checkout_id,
+            "created_at": p.created_at.isoformat(),
+        }
+        for p in payments
+    ]
 
 
 @router.get("/")
