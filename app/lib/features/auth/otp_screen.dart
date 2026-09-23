@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/api_client.dart';
 import '../../core/auth_storage.dart';
+import '../../core/fcm_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../profile/profile_setup_screen.dart';
 
@@ -27,6 +28,12 @@ class _OtpScreenState extends State<OtpScreen> {
       final access = res['access_token'] as String;
       final refresh = res['refresh_token'] as String;
       await (widget.storage ?? AuthStorage()).saveTokens(access: access, refresh: refresh);
+      // FCM: Android 13+ permission + getToken, send to backend (multiple tokens per user)
+      try {
+        final fcm = FcmService(api: api, storage: widget.storage ?? AuthStorage());
+        await fcm.registerTokenAfterLogin();
+        await fcm.setupForegroundHandlers();
+      } catch (_) {}
       if (!mounted) return;
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileSetupScreen()));
     } catch (e) {

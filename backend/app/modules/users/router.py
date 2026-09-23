@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -10,6 +11,7 @@ from app.core.database import get_session
 from app.core.deps import CurrentUser
 from app.core.storage import generate_presigned_url
 from app.models.craftsman_profile import CraftsmanProfile
+from app.models.device_token import DeviceToken
 from app.models.user import User
 from app.models.verification_document import VerificationDocument
 from app.modules.users.schemas import (
@@ -146,6 +148,30 @@ async def list_my_verification(
     result = await session.execute(select(VerificationDocument).where(VerificationDocument.user_id == current_user.id).order_by(VerificationDocument.created_at.desc()))
     docs = result.scalars().all()
     return [VerificationOut.model_validate(d) for d in docs]
+
+
+class FcmTokenInUsers(BaseModel):
+    token: str
+    platform: str = "android"
+
+
+@router.post("/me/fcm-token", response_model=dict[str, str], status_code=status.HTTP_201_CREATED)
+async def register_fcm_token_users(
+    payload: FcmTokenInUsers,
+    current_user: CurrentUser,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    result = await session.execute(select(DeviceToken).where(DeviceToken.token == payload.token))
+    existing = result.scalar_one_or_none()
+    if existing:
+        existing.user_id = current_user.id
+        existing.platform = payload.platform
+        await session.commit()
+        return {"status": "updated", "token": existing.token}
+    token = DeviceToken(user_id=current_user.id, token=payload.token, platform=payload.platform)
+    session.add(token)
+    await session.commit()
+    return {"status": "created", "token": token.token}
 
 
 @router.get("/{user_id}", response_model=UserOut)
