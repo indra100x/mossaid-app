@@ -60,8 +60,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       body: ListView(padding: const EdgeInsets.all(16), children: [
         TextField(controller: _nameCtrl, decoration: InputDecoration(labelText: l10n.nameLabel)),
         const SizedBox(height: 12),
-        DropdownButtonFormField<String>(initialValue: _role, decoration: InputDecoration(labelText: l10n.roleLabel), items: ['client','craftsman'].map((r) => DropdownMenuItem(value: r, child: Text(r == 'client' ? l10n.roleClient : l10n.roleCraftsman))).toList(), onChanged: (v) => setState(() => _role = v ?? 'client')),
-        DropdownButtonFormField<String>(initialValue: _lang, decoration: InputDecoration(labelText: l10n.languageLabel), items: const ['fr','ar'].map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(), onChanged: (v) => setState(() => _lang = v ?? 'fr')),
+        DropdownButtonFormField<String>(value: _role, decoration: InputDecoration(labelText: l10n.roleLabel), items: ['client','craftsman'].map((r) => DropdownMenuItem(value: r, child: Text(r == 'client' ? l10n.roleClient : l10n.roleCraftsman))).toList(), onChanged: (v) => setState(() => _role = v ?? 'client')),
+        DropdownButtonFormField<String>(value: _lang, decoration: InputDecoration(labelText: l10n.languageLabel), items: const ['fr','ar'].map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(), onChanged: (v) => setState(() => _lang = v ?? 'fr')),
         if (_role == 'craftsman') ...[
           const SizedBox(height: 12),
           TextField(controller: _tradesCtrl, decoration: InputDecoration(labelText: l10n.craftsmanTradesLabel, hintText: 'plumber, electrician')),
