@@ -1,23 +1,44 @@
 @import "tailwindcss";
 
-/* Operations ledger — warm paper ground, ink text, one teal accent.
-   Deliberately no dark-mode flip: the palette is the design. */
+/* Operations ledger — token graph: reference hues → semantic roles →
+   components. Components must use semantic tokens below, never raw hues.
+   Neutrals are warmed to the paper ground; text pairs verified ≥ WCAG AA
+   (ink 16.5, soft 7.2, accent/white 7.6, status inks ~7 on their washes). */
 
-:root {
-  --background: #faf8f4;
-  --foreground: #1c1917;
-}
+@theme {
+  /* Reference: warm-tinted neutrals (stone warmed toward the paper) */
+  --color-paper: #faf8f4; /* ground          */
+  --color-card: #ffffff; /* raised surface  */
+  --color-wash: #f2eee5; /* hover / skeleton */
+  --color-line: #e8e3d8; /* hairlines       */
+  --color-ink: #1c1917; /* primary text    */
+  --color-soft: #57534e; /* secondary text  */
+  --color-ghost: #a8a29e; /* decorative only */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Reference: single brand hue — deep souk teal */
+  --color-accent: #115e59; /* forward actions   */
+  --color-accent-deep: #0f4c47; /* action hover      */
+  --color-accent-ink: #ffffff; /* text on accent    */
+  --color-accent-wash: #f0fdfa; /* tinted surface    */
+
+  /* Semantic: state only — success / attention / danger */
+  --color-success: #047857;
+  --color-success-wash: #ecfdf5;
+  --color-success-ink: #065f46;
+  --color-warn: #b45309;
+  --color-warn-wash: #fffbeb;
+  --color-warn-ink: #92400e;
+  --color-danger: #be123c;
+  --color-danger-wash: #fff1f2;
+  --color-danger-ink: #9f1239;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-paper);
+  color: var(--color-ink);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -29,6 +50,6 @@ body {
 }
 
 ::selection {
-  background: #0f766e;
-  color: #ffffff;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
 }

@@ -91,10 +91,10 @@ function toneFor(status: string): Tone {
 }
 
 const TONE_CLASSES: Record<Tone, string> = {
-  ok: "bg-emerald-50 text-emerald-800 ring-emerald-600/20",
-  warn: "bg-amber-50 text-amber-800 ring-amber-600/25",
-  bad: "bg-rose-50 text-rose-800 ring-rose-600/20",
-  mute: "bg-stone-100 text-stone-600 ring-stone-500/10",
+  ok: "bg-success-wash text-success-ink ring-success/20",
+  warn: "bg-warn-wash text-warn-ink ring-warn/25",
+  bad: "bg-danger-wash text-danger-ink ring-danger/20",
+  mute: "bg-wash text-soft ring-soft/10",
 };
 
 function Pill({ status }: { status: string }) {
@@ -114,11 +114,11 @@ function Pill({ status }: { status: string }) {
 
 function Panel(props: { title: string; hint: string; count?: number; children: React.ReactNode }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-      <div className="flex items-baseline justify-between gap-3 border-b border-stone-200 px-4 py-3">
+    <section className="overflow-hidden rounded-lg border border-line bg-card">
+      <div className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3">
         <div>
           <h2 className="text-sm font-semibold">{props.title}</h2>
-          <p className="mt-0.5 text-xs text-stone-500">{props.hint}</p>
+          <p className="mt-0.5 text-xs text-soft">{props.hint}</p>
         </div>
         {props.count !== undefined && (
           <span className="tnum text-2xl font-semibold tabular-nums">{numFmt.format(props.count)}</span>
@@ -132,8 +132,8 @@ function Panel(props: { title: string; hint: string; count?: number; children: R
 function Empty({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center gap-2 py-8 text-center">
-      <Inbox className="h-6 w-6 text-stone-300" strokeWidth={1.5} />
-      <p className="text-sm text-stone-500">{label}</p>
+      <Inbox className="h-6 w-6 text-ghost" strokeWidth={1.5} />
+      <p className="text-sm text-soft">{label}</p>
     </div>
   );
 }
@@ -142,13 +142,13 @@ function SkeletonRows() {
   return (
     <div className="flex flex-col gap-2 py-1" aria-label="Loading">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-stone-100" />
+        <div key={i} className="h-10 animate-pulse rounded-md bg-wash" />
       ))}
     </div>
   );
 }
 
-// Action language is consistent everywhere: teal-solid moves money/state
+// Action language is consistent everywhere: accent-solid moves money/state
 // forward (approve, release, disburse); outline destroys or sends back
 // (reject, refund, suspend).
 function SolidButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
@@ -156,7 +156,7 @@ function SolidButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...rest}
-      className={`inline-flex items-center gap-1.5 rounded-md bg-teal-800 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-teal-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 disabled:opacity-50 ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-ink hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 ${className}`}
     />
   );
 }
@@ -164,8 +164,8 @@ function SolidButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
 function OutlineButton(props: React.ButtonHTMLAttributes<HTMLButtonElement> & { danger?: boolean }) {
   const { danger, className = "", ...rest } = props;
   const tone = danger
-    ? "border-rose-300 text-rose-700 hover:bg-rose-50 focus-visible:outline-rose-600"
-    : "border-stone-300 text-stone-700 hover:bg-stone-50 focus-visible:outline-teal-700";
+    ? "border-danger/40 text-danger-ink hover:bg-danger-wash focus-visible:outline-danger"
+    : "border-line text-soft hover:bg-wash focus-visible:outline-accent";
   return (
     <button
       {...rest}
@@ -371,29 +371,29 @@ export default function Home() {
 
   if (!mounted) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#faf8f4]">
-        <p className="text-sm text-stone-500">Loading…</p>
+      <main className="flex min-h-screen items-center justify-center bg-paper">
+        <p className="text-sm text-soft">Loading…</p>
       </main>
     );
   }
 
   if (!authed) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#faf8f4] p-6">
+      <main className="flex min-h-screen items-center justify-center bg-paper p-6">
         <div className="w-full max-w-sm">
           <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-stone-900 text-lg font-bold text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-ink text-lg font-bold text-white">
               M
             </div>
             <div>
               <p className="text-base font-semibold leading-tight">Mossaid</p>
-              <p className="text-xs text-stone-500">Operations ledger</p>
+              <p className="text-xs text-soft">Operations ledger</p>
             </div>
           </div>
-          <form onSubmit={login} className="rounded-lg border border-stone-200 bg-white p-5">
+          <form onSubmit={login} className="rounded-lg border border-line bg-card p-5">
             <h1 className="text-sm font-semibold">Admin sign in</h1>
-            <p className="mt-0.5 text-xs text-stone-500">Verification, disputes, payouts.</p>
-            <label htmlFor="login-user" className="mt-4 block text-xs font-medium text-stone-700">
+            <p className="mt-0.5 text-xs text-soft">Verification, disputes, payouts.</p>
+            <label htmlFor="login-user" className="mt-4 block text-xs font-medium text-soft">
               Username
             </label>
             <input
@@ -402,9 +402,9 @@ export default function Home() {
               autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
+              className="mt-1 w-full rounded-md border border-line bg-card px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
             />
-            <label htmlFor="login-pass" className="mt-3 block text-xs font-medium text-stone-700">
+            <label htmlFor="login-pass" className="mt-3 block text-xs font-medium text-soft">
               Password
             </label>
             <input
@@ -413,13 +413,13 @@ export default function Home() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
+              className="mt-1 w-full rounded-md border border-line bg-card px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
             />
-            {loginError && <p className="mt-3 text-xs text-rose-700">{loginError}</p>}
+            {loginError && <p className="mt-3 text-xs text-danger-ink">{loginError}</p>}
             <button
               type="submit"
               disabled={loginBusy}
-              className="mt-4 w-full rounded-md bg-teal-800 px-3 py-2 text-sm font-medium text-white hover:bg-teal-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 disabled:opacity-50"
+              className="mt-4 w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-ink hover:bg-accent-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
             >
               {loginBusy ? "Signing in…" : "Sign in"}
             </button>
@@ -439,8 +439,8 @@ export default function Home() {
         key={t.id}
         onClick={() => setTab(t.id)}
         aria-current={active ? "page" : undefined}
-        className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700 ${
-          active ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+        className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent ${
+          active ? "bg-ink text-white" : "text-soft hover:bg-wash hover:text-ink"
         }`}
       >
         {t.icon}
@@ -448,7 +448,7 @@ export default function Home() {
         {badge > 0 && (
           <span
             className={`tnum rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums ${
-              active ? "bg-white/15 text-white" : "bg-amber-100 text-amber-800"
+              active ? "bg-card/15 text-white" : "bg-warn-wash text-warn-ink"
             }`}
           >
             {numFmt.format(badge)}
@@ -459,29 +459,29 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf8f4] text-stone-900 md:flex">
+    <div className="min-h-screen bg-paper text-ink md:flex">
       {/* Sidebar — same ground as content, separated by a hairline */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-stone-200 md:flex">
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-line md:flex">
         <div className="flex items-center gap-2.5 px-4 pb-4 pt-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-stone-900 text-sm font-bold text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-ink text-sm font-bold text-white">
             M
           </div>
           <div>
             <p className="text-sm font-semibold leading-tight">Mossaid</p>
-            <p className="text-[11px] leading-tight text-stone-500">Operations ledger</p>
+            <p className="text-[11px] leading-tight text-soft">Operations ledger</p>
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-0.5 px-3" aria-label="Sections">
           {TABS.map(navButton)}
         </nav>
-        <div className="border-t border-stone-200 p-3">
+        <div className="border-t border-line p-3">
           <div className="mb-2 flex items-center gap-2 px-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span className="text-xs text-stone-500">local · {API_BASE.replace(/^https?:\/\//, "")}</span>
+            <span className="h-1.5 w-1.5 rounded-full bg-success" />
+            <span className="text-xs text-soft">local · {API_BASE.replace(/^https?:\/\//, "")}</span>
           </div>
           <button
             onClick={() => logout()}
-            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-teal-700"
+            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-soft hover:bg-wash hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
           >
             <LogOut className="h-4 w-4" strokeWidth={2} />
             Log out
@@ -491,16 +491,16 @@ export default function Home() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}
-        <div className="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3 md:hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 md:hidden">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-stone-900 text-xs font-bold text-white">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-ink text-xs font-bold text-white">
               M
             </div>
             <p className="text-sm font-semibold">Mossaid</p>
           </div>
           <button
             onClick={() => logout()}
-            className="inline-flex items-center gap-1.5 rounded-md border border-stone-300 px-2.5 py-1.5 text-xs font-medium text-stone-700"
+            className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-soft"
           >
             <LogOut className="h-3.5 w-3.5" strokeWidth={2} />
             Log out
@@ -508,15 +508,15 @@ export default function Home() {
         </div>
 
         {/* Section header */}
-        <div className="flex items-start justify-between gap-3 border-b border-stone-200 px-4 py-4 md:px-8">
+        <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-4 md:px-8">
           <div>
             <h1 className="text-lg font-semibold tracking-tight">{meta.title}</h1>
-            <p className="mt-0.5 text-xs text-stone-500">{meta.hint}</p>
+            <p className="mt-0.5 text-xs text-soft">{meta.hint}</p>
           </div>
           <button
             onClick={() => void load()}
             disabled={loading}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-stone-300 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 disabled:opacity-50"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-soft hover:bg-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} strokeWidth={2} />
             {loading ? "Loading…" : "Refresh"}
@@ -524,13 +524,13 @@ export default function Home() {
         </div>
 
         {/* Mobile section nav */}
-        <nav className="flex gap-1.5 overflow-x-auto border-b border-stone-200 px-4 py-2 md:hidden" aria-label="Sections">
+        <nav className="flex gap-1.5 overflow-x-auto border-b border-line px-4 py-2 md:hidden" aria-label="Sections">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium ${
-                tab === t.id ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-100"
+                tab === t.id ? "bg-ink text-white" : "text-soft hover:bg-wash"
               }`}
             >
               {t.icon}
@@ -541,7 +541,7 @@ export default function Home() {
 
         <main className="w-full max-w-5xl flex-1 px-4 py-4 md:px-8 md:py-6">
           {error && (
-            <p className="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{error}</p>
+            <p className="mb-3 rounded-lg border border-danger/25 bg-danger-wash p-3 text-xs text-danger-ink">{error}</p>
           )}
 
           {tab === "analytics" && <AnalyticsView stats={stats} loading={loading} />}
@@ -553,15 +553,15 @@ export default function Home() {
               ) : rows.length === 0 ? (
                 <Empty label="Queue clear — nothing awaiting review." />
               ) : (
-                <ul className="divide-y divide-stone-100">
+                <ul className="divide-y divide-line">
                   {rows.map((d) => (
                     <li key={String(d.id)} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">
                           {String(d.doc_type).replace(/_/g, " ")}
-                          <span className="ml-2 font-mono text-xs font-normal text-stone-400">{shortId(String(d.user_id))}</span>
+                          <span className="ml-2 font-mono text-xs font-normal text-soft">{shortId(String(d.user_id))}</span>
                         </p>
-                        <p className="mt-0.5 text-xs text-stone-500">Filed {fmtDate(String(d.created_at))}</p>
+                        <p className="mt-0.5 text-xs text-soft">Filed {fmtDate(String(d.created_at))}</p>
                       </div>
                       <Pill status={String(d.status)} />
                       <div className="flex gap-2">
@@ -588,14 +588,14 @@ export default function Home() {
               ) : rows.length === 0 ? (
                 <Empty label="No disputes — escrow is flowing." />
               ) : (
-                <ul className="divide-y divide-stone-100">
+                <ul className="divide-y divide-line">
                   {rows.map((d) => (
                     <li key={String(d.id)} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">
-                          Payment <span className="font-mono text-xs font-normal text-stone-500">{shortId(String(d.payment_id))}</span>
+                          Payment <span className="font-mono text-xs font-normal text-soft">{shortId(String(d.payment_id))}</span>
                         </p>
-                        <p className="mt-0.5 text-xs text-stone-500">
+                        <p className="mt-0.5 text-xs text-soft">
                           “{String(d.reason ?? "no reason given")}” · filed {fmtDate(String(d.created_at))}
                         </p>
                       </div>
@@ -610,7 +610,7 @@ export default function Home() {
                           </SolidButton>
                         </div>
                       ) : (
-                        <span className="text-xs text-stone-400">settled</span>
+                        <span className="text-xs text-soft">settled</span>
                       )}
                     </li>
                   ))}
@@ -631,19 +631,19 @@ export default function Home() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="border-b border-stone-200 text-xs text-stone-500">
+                      <tr className="border-b border-line text-xs text-soft">
                         <th className="py-2 pr-4 font-medium">Craftsman</th>
                         <th className="py-2 pr-4 font-medium">Amount</th>
                         <th className="py-2 pr-4 font-medium">Released</th>
                         <th className="py-2 text-right font-medium">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-stone-100">
+                    <tbody className="divide-y divide-line">
                       {rows.map((p) => (
-                        <tr key={String(p.id)} className="hover:bg-stone-50">
-                          <td className="py-2.5 pr-4 font-mono text-xs text-stone-600">{shortId(String(p.craftsman_id))}</td>
+                        <tr key={String(p.id)} className="hover:bg-wash">
+                          <td className="py-2.5 pr-4 font-mono text-xs text-soft">{shortId(String(p.craftsman_id))}</td>
                           <td className="tnum py-2.5 pr-4 font-semibold tabular-nums">{fmtDZD(p.amount)}</td>
-                          <td className="py-2.5 pr-4 text-xs text-stone-500">{p.released_at ? fmtDate(String(p.released_at)) : "—"}</td>
+                          <td className="py-2.5 pr-4 text-xs text-soft">{p.released_at ? fmtDate(String(p.released_at)) : "—"}</td>
                           <td className="py-2.5 text-right">
                             <SolidButton onClick={() => void act(`/admin/payouts/${p.id}/disburse`, "POST")}>
                               Mark disbursed
@@ -665,15 +665,15 @@ export default function Home() {
               ) : rows.length === 0 ? (
                 <Empty label="No audit entries yet." />
               ) : (
-                <ol className="divide-y divide-stone-100 font-mono text-xs">
+                <ol className="divide-y divide-line font-mono text-xs">
                   {rows.map((l) => (
                     <li key={String(l.id)} className="flex flex-wrap items-baseline gap-x-3 py-2">
-                      <span className="text-stone-400">{fmtDate(String(l.created_at))}</span>
-                      <span className="rounded bg-stone-100 px-1.5 py-0.5 font-semibold text-stone-700">{String(l.action)}</span>
-                      <span className="text-stone-500">
+                      <span className="text-soft">{fmtDate(String(l.created_at))}</span>
+                      <span className="rounded bg-wash px-1.5 py-0.5 font-semibold text-soft">{String(l.action)}</span>
+                      <span className="text-soft">
                         {String(l.target_type)}/{shortId(String(l.target_id ?? ""))}
                       </span>
-                      <span className="ml-auto text-stone-400">by {shortId(String(l.actor_id ?? "?"))}</span>
+                      <span className="ml-auto text-soft">by {shortId(String(l.actor_id ?? "?"))}</span>
                     </li>
                   ))}
                 </ol>
@@ -681,7 +681,7 @@ export default function Home() {
             </Panel>
           )}
 
-          <p className="mt-4 text-[11px] text-stone-400">All monetary values in DZD · every action above is audit-logged.</p>
+          <p className="mt-4 text-[11px] text-soft">All monetary values in DZD · every action above is audit-logged.</p>
         </main>
       </div>
     </div>
@@ -702,28 +702,28 @@ function AnalyticsView({ stats, loading }: { stats: Row | null; loading: boolean
   }
   const pct = (v: string | number | boolean | null) => Math.max(0, Math.min(100, Number(v)));
   const rate = (label: string, value: string | number | boolean | null, bar: string, note?: string) => (
-    <div className="rounded-lg border border-stone-200 bg-white p-4">
-      <p className="text-xs text-stone-500">{label}</p>
+    <div className="rounded-lg border border-line bg-card p-4">
+      <p className="text-xs text-soft">{label}</p>
       <p className="tnum mt-1 text-2xl font-semibold tabular-nums">{numFmt.format(Number(value))}%</p>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-100">
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-wash">
         <div className={`h-full rounded-full ${bar}`} style={{ width: `${pct(value)}%` }} />
       </div>
-      {note && <p className="mt-1.5 text-[11px] text-stone-500">{note}</p>}
+      {note && <p className="mt-1.5 text-[11px] text-soft">{note}</p>}
     </div>
   );
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded-lg border border-stone-200 bg-stone-900 p-5 text-white">
-        <p className="text-xs text-stone-400">Gross merchandise value</p>
+      <div className="rounded-lg border border-line bg-ink p-5 text-white">
+        <p className="text-xs text-white/60">Gross merchandise value</p>
         <p className="tnum mt-1 text-3xl font-semibold tabular-nums">{fmtDZD(stats.total_gmv)}</p>
-        <p className="tnum mt-1 text-xs tabular-nums text-stone-400">
+        <p className="tnum mt-1 text-xs tabular-nums text-white/60">
           {numFmt.format(Number(stats.total_bookings))} bookings · {numFmt.format(Number(stats.completed_bookings))} completed
         </p>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {rate("Completion rate", stats.completion_rate, "bg-teal-700")}
-        {rate("Craftsman verification", stats.verification_rate, "bg-teal-700", `${numFmt.format(Number(stats.verified_craftsmen))} of ${numFmt.format(Number(stats.total_craftsmen))} verified`)}
-        {rate("Dispute rate", stats.dispute_rate, "bg-rose-500", `${numFmt.format(Number(stats.total_disputes))} open — investigate above 5%`)}
+        {rate("Completion rate", stats.completion_rate, "bg-accent")}
+        {rate("Craftsman verification", stats.verification_rate, "bg-accent", `${numFmt.format(Number(stats.verified_craftsmen))} of ${numFmt.format(Number(stats.total_craftsmen))} verified`)}
+        {rate("Dispute rate", stats.dispute_rate, "bg-danger", `${numFmt.format(Number(stats.total_disputes))} open — investigate above 5%`)}
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
@@ -732,8 +732,8 @@ function AnalyticsView({ stats, loading }: { stats: Row | null; loading: boolean
           ["Bookings", stats.total_bookings],
           ["Disputes", stats.total_disputes],
         ].map(([label, value]) => (
-          <div key={label as string} className="rounded-lg border border-stone-200 bg-white p-4">
-            <p className="text-xs text-stone-500">{label}</p>
+          <div key={label as string} className="rounded-lg border border-line bg-card p-4">
+            <p className="text-xs text-soft">{label}</p>
             <p className="tnum mt-1 text-xl font-semibold tabular-nums">{numFmt.format(Number(value))}</p>
           </div>
         ))}
@@ -757,7 +757,7 @@ function UsersTable({ rows, loading, act }: { rows: Row[]; loading: boolean; act
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-stone-200 text-xs text-stone-500">
+              <tr className="border-b border-line text-xs text-soft">
                 <th className="py-2 pr-4 font-medium">Phone</th>
                 <th className="py-2 pr-4 font-medium">Role</th>
                 <th className="py-2 pr-4 font-medium">Status</th>
@@ -765,17 +765,17 @@ function UsersTable({ rows, loading, act }: { rows: Row[]; loading: boolean; act
                 <th className="py-2 text-right font-medium">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-line">
               {rows.map((u) => {
                 const suspended = u.is_suspended === true;
                 return (
-                  <tr key={String(u.id)} className="hover:bg-stone-50">
+                  <tr key={String(u.id)} className="hover:bg-wash">
                     <td className="tnum py-2.5 pr-4 tabular-nums">{String(u.phone)}</td>
-                    <td className="py-2.5 pr-4 text-xs text-stone-500">{String(u.role)}</td>
+                    <td className="py-2.5 pr-4 text-xs text-soft">{String(u.role)}</td>
                     <td className="py-2.5 pr-4">
                       <Pill status={suspended ? "suspended" : u.is_verified ? "verified" : "pending"} />
                     </td>
-                    <td className="py-2.5 pr-4 text-xs text-stone-500">{u.created_at ? fmtDate(String(u.created_at)) : "—"}</td>
+                    <td className="py-2.5 pr-4 text-xs text-soft">{u.created_at ? fmtDate(String(u.created_at)) : "—"}</td>
                     <td className="py-2.5 text-right">
                       {suspended ? (
                         <OutlineButton onClick={() => void act(`/admin/users/${u.id}/reinstate`, "POST")}>
