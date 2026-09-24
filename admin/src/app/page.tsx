@@ -43,15 +43,14 @@ function Section(props: { title: string; hint: string; children: React.ReactNode
 }
 
 export default function Home() {
-  const [authed, setAuthed] = useState(() =>
-    typeof window === "undefined" ? false : window.sessionStorage.getItem(AUTH_KEY) === "1"
-  );
+  // Server and first client render must match: start unauthenticated with no
+  // token, then hydrate from storage after mount (avoids hydration mismatch).
+  const [mounted, setMounted] = useState(false);
+  const [authed, setAuthed] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [token, setToken] = useState(() =>
-    typeof window === "undefined" ? "" : (window.localStorage.getItem("mossaid_admin_token") ?? "")
-  );
+  const [token, setToken] = useState("");
   const [tab, setTab] = useState<Tab>("verification");
   const [rows, setRows] = useState<Row[]>([]);
   const [stats, setStats] = useState<Row | null>(null);
@@ -62,6 +61,15 @@ export default function Home() {
     setToken(v);
     window.localStorage.setItem("mossaid_admin_token", v);
   };
+
+  // Hydrate persisted auth state after mount (client-only storage).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+    if (window.sessionStorage.getItem(AUTH_KEY) === "1") setAuthed(true);
+    const saved = window.localStorage.getItem("mossaid_admin_token");
+    if (saved) setToken(saved);
+  }, []);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -137,6 +145,15 @@ export default function Home() {
     { id: "analytics", label: "Analytics" },
     { id: "audit", label: "Audit Log" },
   ];
+
+  if (!mounted) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 p-8">
+        <h1 className="text-3xl font-bold">Mossaid Admin</h1>
+        <p className="text-sm text-zinc-500">Loading…</p>
+      </main>
+    );
+  }
 
   if (!authed) {
     return (
