@@ -4,6 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
+// UI gate only (local convenience, NOT API security — every API call still
+// requires a backend admin JWT and is enforced by server-side RBAC tiers).
+// Override per deploy via admin/.env.local (gitignored) or env.
+const GATE_USER = process.env.NEXT_PUBLIC_ADMIN_USERNAME ?? "admin";
+const GATE_PASS = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "polo@2013";
+const AUTH_KEY = "mossaid_admin_auth";
+
 type Tab = "verification" | "disputes" | "users" | "payouts" | "analytics" | "audit";
 
 type Row = Record<string, string | number | boolean | null>;
@@ -36,6 +43,12 @@ function Section(props: { title: string; hint: string; children: React.ReactNode
 }
 
 export default function Home() {
+  const [authed, setAuthed] = useState(() =>
+    typeof window === "undefined" ? false : window.sessionStorage.getItem(AUTH_KEY) === "1"
+  );
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [token, setToken] = useState(() =>
     typeof window === "undefined" ? "" : (window.localStorage.getItem("mossaid_admin_token") ?? "")
   );
@@ -99,6 +112,23 @@ export default function Home() {
     }
   };
 
+  const login = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username === GATE_USER && password === GATE_PASS) {
+      window.sessionStorage.setItem(AUTH_KEY, "1");
+      setAuthed(true);
+      setLoginError(null);
+      setPassword("");
+    } else {
+      setLoginError("Invalid username or password");
+    }
+  };
+
+  const logout = () => {
+    window.sessionStorage.removeItem(AUTH_KEY);
+    setAuthed(false);
+  };
+
   const tabs: { id: Tab; label: string }[] = [
     { id: "verification", label: "Verification Queue" },
     { id: "disputes", label: "Disputes" },
@@ -108,15 +138,56 @@ export default function Home() {
     { id: "audit", label: "Audit Log" },
   ];
 
+  if (!authed) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 p-8">
+        <h1 className="text-3xl font-bold">Mossaid Admin</h1>
+        <form onSubmit={login} className="flex flex-col gap-3 rounded border p-4">
+          <label htmlFor="login-user" className="text-sm font-medium">
+            Username
+          </label>
+          <input
+            id="login-user"
+            type="text"
+            autoComplete="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="rounded border px-3 py-2 text-sm"
+          />
+          <label htmlFor="login-pass" className="text-sm font-medium">
+            Password
+          </label>
+          <input
+            id="login-pass"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="rounded border px-3 py-2 text-sm"
+          />
+          {loginError && <p className="text-sm text-red-700">{loginError}</p>}
+          <button type="submit" className="rounded bg-zinc-900 px-3 py-2 text-sm text-white">
+            Log in
+          </button>
+        </form>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 p-8">
-      <header>
-        <h1 className="text-3xl font-bold">Mossaid Admin</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          Phase 3 dashboard — verification, disputes, suspension, payouts, analytics (GMV, completion,
-          verification &amp; dispute rates). Every action is audit-logged. Use a support/ops/finance/super-admin
-          JWT; 403 means the tier lacks that permission.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Mossaid Admin</h1>
+          <p className="mt-1 text-sm text-zinc-600">
+            Phase 3 dashboard — verification, disputes, suspension, payouts, analytics (GMV, completion,
+            verification &amp; dispute rates). Every action is audit-logged. Use a support/ops/finance/super-admin
+            JWT; 403 means the tier lacks that permission.
+          </p>
+        </div>
+        <button onClick={logout} className="shrink-0 rounded border px-3 py-1.5 text-sm">
+          Log out
+        </button>
       </header>
 
       <div className="flex flex-col gap-2 rounded border p-4">
