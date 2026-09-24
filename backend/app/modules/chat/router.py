@@ -198,6 +198,16 @@ async def websocket_endpoint(websocket: WebSocket, booking_id: str) -> None:
                     "read_at": None,
                 }
                 await _publish(booking_id, out)
+                # Phase 3: push + in-app notification to the other participant.
+                # Flutter-side FCM permission/token/handlers already exist;
+                # backend targets stored device tokens via firebase-admin.
+                try:
+                    from app.modules.notifications.service import notify_new_message
+
+                    await notify_new_message(session, booking, db_user.id, content)
+                    await session.commit()
+                except Exception:
+                    pass
     except WebSocketDisconnect:
         pass
     except Exception:

@@ -38,6 +38,19 @@ services:
       JWT_SECRET_KEY: dev-secret-key-change-in-prod
       APP_ENV: local
       DEBUG: "true"
+      # Phase 3 secrets/observability — set in .env or the shell, never committed.
+      # Empty/missing values keep safe local defaults (Sentry/FCM disabled).
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PROMETHEUS_ENABLED: ${PROMETHEUS_ENABLED:-true}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
+      # Chargily sandbox by default; prod deploy overrides with live keys.
+      CHARGILY_API_KEY: ${CHARGILY_API_KEY:-test_6f2d8e2a-1234-4a5b-9c9d-test_sandbox_key}
+      CHARGILY_API_SECRET: ${CHARGILY_API_SECRET:-test_sandbox_secret_do_not_use_in_prod}
+      CHARGILY_API_URL: ${CHARGILY_API_URL:-https://pay.chargily.net/api/v2}
+      CHARGILY_WEBHOOK_SECRET: ${CHARGILY_WEBHOOK_SECRET:-test_webhook_secret}
+      CHARGILY_SANDBOX: ${CHARGILY_SANDBOX:-true}
     depends_on:
       db:
         condition: service_healthy
@@ -46,6 +59,38 @@ services:
     volumes:
       - ./backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Prometheus scrapes api:8000/metrics using infra/prometheus.yml.
+  # Profile-gated so plain `docker compose up` is unchanged.
+  # Usage: docker compose --profile observability up prometheus
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    profiles: ["observability"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/alerts.yml:/etc/prometheus/alerts.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    depends_on:
+      - api
+
+  # TLS-terminating edge gateway (see infra/nginx.conf).
+  # Needs a cert at infra/certs/{fullchain.pem,privkey.pem} — self-signed is
+  # fine locally (see README), real cert in prod. Profile-gated likewise.
+  # Usage: docker compose --profile gateway up nginx
+  nginx:
+    image: nginx:1.27-alpine
+    profiles: ["gateway"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
 
 volumes:
   pgdata:

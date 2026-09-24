@@ -56,6 +56,13 @@ async def create_booking(
     session.add(booking)
     await session.commit()
     await session.refresh(booking)
+    try:
+        from app.modules.notifications.service import notify_booking_status_change
+
+        await notify_booking_status_change(session, booking, "requested")
+        await session.commit()
+    except Exception:
+        pass
     return BookingOut.model_validate(booking)
 
 
@@ -134,7 +141,22 @@ async def update_booking_status(
             detail=f"Cannot transition from {booking.status} to {new_status}",
         )
 
+    old_status = booking.status
     booking.status = new_status
     await session.commit()
     await session.refresh(booking)
+    try:
+        from app.core.metrics import booking_status_changes
+
+        booking_status_changes.labels(from_status=old_status, to_status=new_status).inc()
+    except Exception:
+        pass
+    # Notification trigger (booking status change) — in-app + FCM fallback
+    try:
+        from app.modules.notifications.service import notify_booking_status_change
+
+        await notify_booking_status_change(session, booking, new_status)
+        await session.commit()
+    except Exception:
+        pass
     return BookingOut.model_validate(booking)

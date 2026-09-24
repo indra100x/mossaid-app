@@ -63,3 +63,31 @@ GitHub Actions runs on every PR to `main`:
 - backend: `ruff check`, `mypy`, `pytest`
 - admin: `npm run lint`, `npm run build`
 - app: `flutter analyze`, `flutter test`
+
+## Production Checklist
+
+```bash
+# 1. Secrets — export in the deploy env (never commit real values)
+export JWT_SECRET_KEY="..." SENTRY_DSN="..." \
+  FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}' \
+  CHARGILY_API_KEY="..." CHARGILY_API_SECRET="..." \
+  CHARGILY_WEBHOOK_SECRET="..." CHARGILY_SANDBOX="false"
+# See backend/.env.example for the full list; docker-compose.yml passes
+# these through with safe local defaults (Sentry/FCM disabled when empty).
+
+# 2. Sandbox money-path verification (human review required before going live)
+cd backend && pytest tests/test_e2e_money_paths.py -v
+# Covers: checkout(pending) → webhook paid(held/escrow) → release, dispute
+# freeze → admin resolve, webhook replay idempotency, notifications, audit.
+
+# 3. Observability
+docker compose --profile observability up prometheus  # :9090, scrapes api:8000/metrics
+# Alert rules (infra/alerts.yml): ApiDown, High5xxRate, PaymentDisputeSpike —
+# wire Prometheus Alertmanager to your paging channel.
+
+# 4. TLS edge gateway (rate limits auth + payments, blocks external /metrics)
+openssl req -x509 -newkey rsa:2048 -keyout infra/certs/privkey.pem \
+  -out infra/certs/fullchain.pem -days 90 -nodes -subj "/CN=example.com"  # local only
+# Prod: replace with a real cert (e.g. Let's Encrypt) at the same paths.
+docker compose --profile gateway up nginx  # :80 → https, :443 TLS
+```

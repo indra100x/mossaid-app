@@ -1,0 +1,35 @@
+# Alert rules for Mossaid marketplace health.
+# Covers product-evaluation.md §4 observability: alert on payment/booking failure spikes.
+groups:
+  - name: mossaid-api
+    rules:
+      # API target down (scrape failing for 1m).
+      - alert: MossaidApiDown
+        expr: up{job="mossaid-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Mossaid API scrape target down"
+
+      # 5xx spike: >5% of requests failing over 5 minutes.
+      - alert: MossaidHigh5xxRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx rate on Mossaid API (>5% over 5m)"
+
+      # Payment/booking failure spike: dispute counter jumping.
+      # Catches escrow problems (gateway outages surface as disputes/refunds).
+      - alert: MossaidPaymentDisputeSpike
+        expr: increase(payment_disputed_total[15m]) > 5
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Payment dispute spike (>5 disputes in 15m)"

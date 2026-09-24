@@ -21,6 +21,10 @@ class User(Base):
     name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     language_pref: Mapped[str] = mapped_column(String(10), nullable=False, default="fr")
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_suspended: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    suspended_by: Mapped[uuid.UUID | None] = mapped_column(SA_UUID(as_uuid=True), nullable=True)
+    suspension_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )

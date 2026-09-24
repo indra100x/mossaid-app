@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -71,7 +71,75 @@ async def delete_fcm_token(
     await session.commit()
 
 
-@router.get("/")
-async def notifications_placeholder() -> dict[str, str]:
-    """notifications — push (FCM) + in-app."""
-    return {"module": "notifications", "status": "not_implemented"}
+class NotificationOut(BaseModel):
+    id: str
+    type: str
+    title: str
+    body: str
+    data: dict[str, Any]
+    is_read: bool
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/", response_model=list[NotificationOut])
+async def list_notifications(
+    current_user: CurrentUser,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[NotificationOut]:
+    from app.models.notification import Notification
+
+    result = await session.execute(
+        select(Notification).where(Notification.user_id == current_user.id).order_by(Notification.created_at.desc())
+    )
+    notifs = result.scalars().all()
+    return [
+        NotificationOut(
+            id=str(n.id),
+            type=n.type,
+            title=n.title,
+            body=n.body,
+            data=n.data,
+            is_read=n.is_read,
+            created_at=n.created_at.isoformat(),
+        )
+        for n in notifs
+    ]
+
+
+@router.post("/{notif_id}/read", status_code=status.HTTP_200_OK)
+async def mark_notification_read(
+    notif_id: str,
+    current_user: CurrentUser,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    from uuid import UUID
+
+    from app.models.notification import Notification
+
+    try:
+        nid = UUID(notif_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from None
+    result = await session.execute(select(Notification).where(Notification.id == nid, Notification.user_id == current_user.id))
+    notif = result.scalar_one_or_none()
+    if notif is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    notif.is_read = True
+    await session.commit()
+    return {"status": "ok"}
+
+
+@router.get("/unread-count", response_model=dict[str, int])
+async def unread_count(
+    current_user: CurrentUser,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, int]:
+    from sqlalchemy import func
+
+    from app.models.notification import Notification
+
+    result = await session.execute(select(func.count()).select_from(Notification).where(Notification.user_id == current_user.id, Notification.is_read == False))  # noqa: E712
+    count = result.scalar_one()
+    return {"count": count}

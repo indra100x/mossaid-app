@@ -26,5 +26,10 @@ class Settings(BaseSettings):
     # Auto-release after completed with no dispute/release
     auto_release_days: int = 7
 
+    # Observability
+    sentry_dsn: str | None = None
+    log_level: str = "INFO"
+    prometheus_enabled: bool = True
+
 
 settings = Settings()

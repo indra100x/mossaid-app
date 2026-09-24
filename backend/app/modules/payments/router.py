@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
 from app.core.deps import CurrentUser
+from app.core.rbac import is_admin_tier, require_permission
 from app.models.booking import Booking
 from app.models.payment import Dispute, Payment, WebhookEvent
 from app.modules.payments.chargily import chargily_client
@@ -124,6 +125,7 @@ async def chargily_webhook(
     # Chargily pay-and-collect: checkout.paid -> funds collected, we mark held (escrow)
     # For Phase 2, our "held" is internal escrow, not Chargily's
     now = datetime.now(UTC)
+    notify_event: str | None = None
     if payload.type in ("checkout.paid", "payment.succeeded", "checkout.success", "paid"):
         if payment.status == "pending":
             payment.status = "held"
@@ -132,6 +134,13 @@ async def chargily_webhook(
             pm_id = payload.data.get("payment_id") or payload.data.get("transaction_id")
             payment.gateway_payment_id = pm_id if isinstance(pm_id, str) else None
             logger.info("Payment %s held via webhook %s (Chargily paid)", payment.id, payload.event_id)
+            notify_event = "held"
+            try:
+                from app.core.metrics import payment_held_total
+
+                payment_held_total.inc()
+            except Exception:
+                pass
         else:
             logger.info("Webhook %s for payment %s status %s not pending, no transition", payload.event_id, payment.id, payment.status)
     elif payload.type in ("checkout.failed", "payment.failed", "failed"):
@@ -140,14 +149,25 @@ async def chargily_webhook(
             payment.refunded_at = now
             payment.last_event_id = payload.event_id
             logger.info("Payment %s refunded via webhook failed %s", payment.id, payload.event_id)
+            notify_event = "refunded"
     elif payload.type in ("refund", "payment.refunded", "checkout.refunded"):
         if payment.status in ("pending", "held", "disputed"):
             payment.status = "refunded"
             payment.refunded_at = now
             payment.last_event_id = payload.event_id
             logger.info("Payment %s refunded via webhook %s", payment.id, payload.event_id)
+            notify_event = "refunded"
     else:
         logger.info("Unhandled webhook type %s for event %s", payload.type, payload.event_id)
+
+    # Phase 3: push + in-app notification on escrow events (held/refunded).
+    if notify_event is not None:
+        try:
+            from app.modules.notifications.service import notify_payment_event
+
+            await notify_payment_event(session, payment, notify_event)
+        except Exception as e:
+            logger.warning("Payment notify failed for %s: %s", payment.id, e)
 
     await session.commit()
     return {"status": "processed"}
@@ -185,6 +205,15 @@ async def release_payment(
     await session.commit()
     await session.refresh(payment)
     logger.info("Payment %s released by client %s to craftsman %s", payment.id, current_user.id, payment.craftsman_id)
+    try:
+        from app.core.metrics import payment_released_total
+        from app.modules.notifications.service import notify_payment_event
+
+        payment_released_total.inc()
+        await notify_payment_event(session, payment, "released")
+        await session.commit()
+    except Exception as e:
+        logger.warning("Payment release notify failed for %s: %s", payment.id, e)
     return PaymentOut.model_validate(payment)
 
 
@@ -221,6 +250,15 @@ async def dispute_payment(
     await session.commit()
     await session.refresh(dispute)
     logger.warning("Payment %s disputed by client %s, frozen for admin review", payment.id, current_user.id)
+    try:
+        from app.core.metrics import payment_disputed_total
+        from app.modules.notifications.service import notify_payment_event
+
+        payment_disputed_total.inc()
+        await notify_payment_event(session, payment, "disputed")
+        await session.commit()
+    except Exception as e:
+        logger.warning("Payment dispute notify failed for %s: %s", payment.id, e)
     return {"status": "disputed", "dispute_id": str(dispute.id)}
 
 
@@ -259,8 +297,7 @@ async def refund_payment(
     current_user: CurrentUser,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> PaymentOut:
-    if current_user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    require_permission(current_user, "payments.refund")
     result = await session.execute(select(Payment).where(Payment.id == payment_id))
     payment = result.scalar_one_or_none()
     if payment is None:
@@ -276,9 +313,26 @@ async def refund_payment(
         dispute.status = "resolved"
         dispute.resolved_at = datetime.now(UTC)
         dispute.resolved_by = current_user.id
+    from app.core.audit import log_audit
+
+    await log_audit(
+        session,
+        current_user.id,
+        "payment.refund",
+        "payment",
+        str(payment.id),
+        {"booking_id": str(payment.booking_id), "amount": payment.amount},
+    )
     await session.commit()
     await session.refresh(payment)
     logger.info("Payment %s refunded by admin %s", payment.id, current_user.id)
+    try:
+        from app.modules.notifications.service import notify_payment_event
+
+        await notify_payment_event(session, payment, "refunded")
+        await session.commit()
+    except Exception as e:
+        logger.warning("Payment refund notify failed for %s: %s", payment.id, e)
     return PaymentOut.model_validate(payment)
 
 
@@ -293,8 +347,8 @@ async def get_payment(
     if payment is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
     if payment.client_id != current_user.id and payment.craftsman_id != current_user.id:
-        # admin can view too
-        if current_user.role != "admin":
+        # admin tiers can view too
+        if not is_admin_tier(current_user):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not participant")
     return PaymentOut.model_validate(payment)
 
