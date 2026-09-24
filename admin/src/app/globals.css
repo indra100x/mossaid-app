@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
+/* Operations ledger — warm paper ground, ink text, one teal accent.
+   Deliberately no dark-mode flip: the palette is the design. */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf8f4;
+  --foreground: #1c1917;
 }
 
 @theme inline {
@@ -12,15 +15,20 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ledger numerals — same width per digit so money columns don't jitter. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+::selection {
+  background: #0f766e;
+  color: #ffffff;
 }
