@@ -2,6 +2,7 @@ import logging
 import time
 
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.health import router as health_router
 from app.core.config import settings
@@ -39,6 +40,17 @@ app = FastAPI(
     title="Mossaid API",
     version="0.1.0",
     description="Mossaid marketplace API",
+)
+
+# Browsers block cross-origin calls without this: the admin dashboard (:3000)
+# calls this API (:8000). Token auth uses Bearer headers, not cookies.
+origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

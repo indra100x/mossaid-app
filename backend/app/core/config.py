@@ -38,5 +38,10 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password_hash: str = ""
 
+    # Browser origins allowed to call the API (admin dashboard at :3000 calls
+    # :8000 cross-origin). Comma-separated; override in prod with the real
+    # admin hostname.
+    cors_origins: str = "http://localhost:3000"
+
 
 settings = Settings()
