@@ -29,6 +29,8 @@ See `system-architecture.md` (section 4 for FastAPI module layout) and `product-
 # Backend API + DB + Redis
 docker compose up --build
 # API at http://localhost:8000 — docs http://localhost:8000/docs — health http://localhost:8000/health
+# First run (or after pulling new migrations):
+docker compose exec api alembic upgrade head
 
 # Or run backend directly (requires local Postgres/Redis)
 cd backend
@@ -41,10 +43,12 @@ cd app
 flutter pub get && flutter analyze && flutter test
 flutter run
 
-# Admin
+# Admin (no terminal skills needed — just log in with the dashboard form)
 cd admin
 npm ci && npm run lint && npm run build
-npm run dev  # http://localhost:3000
+npm run dev  # http://localhost:3000 — login: admin / polo@2013 (local default)
+# Session renews itself; logout is in the header. Prod credentials come from
+# ADMIN_USERNAME / ADMIN_PASSWORD_HASH env (bcrypt hash, see backend/.env.example).
 ```
 
 ## Migrations
@@ -70,6 +74,7 @@ GitHub Actions runs on every PR to `main`:
 # 1. Secrets — export in the deploy env (never commit real values)
 export JWT_SECRET_KEY="..." SENTRY_DSN="..." \
   FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}' \
+  ADMIN_USERNAME="admin" ADMIN_PASSWORD_HASH="$(python -c "from app.core.security import hash_password; print(hash_password('...'))")" \
   CHARGILY_API_KEY="..." CHARGILY_API_SECRET="..." \
   CHARGILY_WEBHOOK_SECRET="..." CHARGILY_SANDBOX="false"
 # See backend/.env.example for the full list; docker-compose.yml passes

@@ -4,32 +4,42 @@ import { useCallback, useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
-// UI gate only (local convenience, NOT API security — every API call still
-// requires a backend admin JWT and is enforced by server-side RBAC tiers).
-// Override per deploy via admin/.env.local (gitignored) or env.
-const GATE_USER = process.env.NEXT_PUBLIC_ADMIN_USERNAME ?? "admin";
-const GATE_PASS = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "polo@2013";
-const AUTH_KEY = "mossaid_admin_auth";
+// Session lives per browser tab (cleared on close). The access token lasts
+// ~15 minutes; the refresh token silently renews it so the admin never has
+// to handle tokens by hand.
+const TOKEN_KEY = "mossaid_admin_token";
+const REFRESH_KEY = "mossaid_admin_refresh";
 
 type Tab = "verification" | "disputes" | "users" | "payouts" | "analytics" | "audit";
 
 type Row = Record<string, string | number | boolean | null>;
 
-async function apiFetch(token: string, path: string, init?: RequestInit): Promise<Row[] | Row> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(init?.headers ?? {}),
-    },
-  });
+async function readJson(res: Response): Promise<Row[] | Row> {
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`${res.status} ${text.slice(0, 200)}`);
   }
   if (res.status === 204) return [];
   return (await res.json()) as Row[] | Row;
+}
+
+/** Exchange the stored refresh token for a fresh access token (null = relogin needed). */
+async function refreshAccessToken(): Promise<string | null> {
+  const refresh = window.sessionStorage.getItem(REFRESH_KEY);
+  if (!refresh) return null;
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { access_token: string };
+    window.sessionStorage.setItem(TOKEN_KEY, body.access_token);
+    return body.access_token;
+  } catch {
+    return null;
+  }
 }
 
 function Section(props: { title: string; hint: string; children: React.ReactNode }) {
@@ -50,6 +60,7 @@ export default function Home() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginBusy, setLoginBusy] = useState(false);
   const [token, setToken] = useState("");
   const [tab, setTab] = useState<Tab>("verification");
   const [rows, setRows] = useState<Row[]>([]);
@@ -57,18 +68,60 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const saveToken = (v: string) => {
-    setToken(v);
-    window.localStorage.setItem("mossaid_admin_token", v);
-  };
+  const logout = useCallback((message?: string) => {
+    window.sessionStorage.removeItem(TOKEN_KEY);
+    window.sessionStorage.removeItem(REFRESH_KEY);
+    setToken("");
+    setAuthed(false);
+    setRows([]);
+    setStats(null);
+    if (message) setLoginError(message);
+  }, []);
 
-  // Hydrate persisted auth state after mount (client-only storage).
+  // Authenticated request: silently renews an expired access token once.
+  const request = useCallback(
+    async (path: string, init?: RequestInit, retry = true): Promise<Row[] | Row> => {
+      const doFetch = (t: string) =>
+        fetch(`${API_BASE}${path}`, {
+          ...init,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${t}`,
+            ...(init?.headers ?? {}),
+          },
+        });
+      let res = await doFetch(token);
+      if (res.status === 401 && retry) {
+        const renewed = await refreshAccessToken();
+        if (renewed) {
+          setToken(renewed);
+          res = await doFetch(renewed);
+        } else {
+          logout("Session expired — please log in again.");
+          throw new Error("401 Session expired");
+        }
+      }
+      return readJson(res);
+    },
+    [token, logout]
+  );
+
+  // Hydrate persisted session after mount (client-only storage).
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
-    if (window.sessionStorage.getItem(AUTH_KEY) === "1") setAuthed(true);
-    const saved = window.localStorage.getItem("mossaid_admin_token");
-    if (saved) setToken(saved);
+    const saved = window.sessionStorage.getItem(TOKEN_KEY);
+    if (saved) {
+      setToken(saved);
+      setAuthed(true);
+    } else if (window.sessionStorage.getItem(REFRESH_KEY)) {
+      void refreshAccessToken().then((renewed) => {
+        if (renewed) {
+          setToken(renewed);
+          setAuthed(true);
+        }
+      });
+    }
   }, []);
 
   const load = useCallback(async () => {
@@ -77,23 +130,23 @@ export default function Home() {
     setError(null);
     try {
       if (tab === "verification") {
-        const data = await apiFetch(token, "/admin/verification?status_filter=pending");
+        const data = await request("/admin/verification?status_filter=pending");
         setRows(Array.isArray(data) ? data : []);
       } else if (tab === "disputes") {
-        const data = await apiFetch(token, "/admin/disputes");
+        const data = await request("/admin/disputes");
         setRows(Array.isArray(data) ? data : []);
       } else if (tab === "users") {
-        const data = await apiFetch(token, "/admin/users");
+        const data = await request("/admin/users");
         setRows(Array.isArray(data) ? data : []);
       } else if (tab === "payouts") {
-        const data = await apiFetch(token, "/admin/payouts");
+        const data = await request("/admin/payouts");
         setRows(Array.isArray(data) ? data : []);
       } else if (tab === "analytics") {
-        const data = await apiFetch(token, "/admin/analytics");
+        const data = await request("/admin/analytics");
         setStats(data as Row);
         setRows([]);
       } else {
-        const data = await apiFetch(token, "/admin/audit-logs");
+        const data = await request("/admin/audit-logs");
         setRows(Array.isArray(data) ? data : []);
       }
     } catch (e) {
@@ -102,7 +155,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [token, tab]);
+  }, [token, tab, request]);
 
   // Data fetch on token/tab change (standard sync-external-system effect).
   useEffect(() => {
@@ -113,28 +166,46 @@ export default function Home() {
   const act = async (path: string, method = "POST", body?: Row) => {
     setError(null);
     try {
-      await apiFetch(token, path, { method, body: body ? JSON.stringify(body) : undefined });
+      await request(path, { method, body: body ? JSON.stringify(body) : undefined });
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Action failed");
     }
   };
 
-  const login = (e: React.FormEvent) => {
+  const login = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === GATE_USER && password === GATE_PASS) {
-      window.sessionStorage.setItem(AUTH_KEY, "1");
+    setLoginBusy(true);
+    setLoginError(null);
+    try {
+      const res = await fetch(`${API_BASE}/auth/admin-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      if (res.status === 401) {
+        setLoginError("Invalid username or password");
+        return;
+      }
+      if (res.status === 503) {
+        setLoginError("Admin login is not configured on the server");
+        return;
+      }
+      if (!res.ok) {
+        setLoginError(`Login failed (${res.status})`);
+        return;
+      }
+      const body = (await res.json()) as { access_token: string; refresh_token: string };
+      window.sessionStorage.setItem(TOKEN_KEY, body.access_token);
+      window.sessionStorage.setItem(REFRESH_KEY, body.refresh_token);
+      setToken(body.access_token);
       setAuthed(true);
-      setLoginError(null);
       setPassword("");
-    } else {
-      setLoginError("Invalid username or password");
+    } catch {
+      setLoginError("Cannot reach the API — is the backend running?");
+    } finally {
+      setLoginBusy(false);
     }
-  };
-
-  const logout = () => {
-    window.sessionStorage.removeItem(AUTH_KEY);
-    setAuthed(false);
   };
 
   const tabs: { id: Tab; label: string }[] = [
@@ -183,8 +254,12 @@ export default function Home() {
             className="rounded border px-3 py-2 text-sm"
           />
           {loginError && <p className="text-sm text-red-700">{loginError}</p>}
-          <button type="submit" className="rounded bg-zinc-900 px-3 py-2 text-sm text-white">
-            Log in
+          <button
+            type="submit"
+            disabled={loginBusy}
+            className="rounded bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+          >
+            {loginBusy ? "Logging in…" : "Log in"}
           </button>
         </form>
       </main>
@@ -197,30 +272,15 @@ export default function Home() {
         <div>
           <h1 className="text-3xl font-bold">Mossaid Admin</h1>
           <p className="mt-1 text-sm text-zinc-600">
-            Phase 3 dashboard — verification, disputes, suspension, payouts, analytics (GMV, completion,
-            verification &amp; dispute rates). Every action is audit-logged. Use a support/ops/finance/super-admin
-            JWT; 403 means the tier lacks that permission.
+            Verification, disputes, suspension, payouts, analytics (GMV, completion, verification &amp;
+            dispute rates). Every action is audit-logged. Session renews itself; if you see “Session
+            expired”, just log in again.
           </p>
         </div>
-        <button onClick={logout} className="shrink-0 rounded border px-3 py-1.5 text-sm">
+        <button onClick={() => logout()} className="shrink-0 rounded border px-3 py-1.5 text-sm">
           Log out
         </button>
       </header>
-
-      <div className="flex flex-col gap-2 rounded border p-4">
-        <label htmlFor="admin-token" className="text-sm font-medium">
-          Admin JWT (Bearer)
-        </label>
-        <input
-          id="admin-token"
-          type="password"
-          value={token}
-          onChange={(e) => saveToken(e.target.value)}
-          placeholder="Paste admin access token"
-          className="rounded border px-3 py-2 text-sm"
-        />
-        <p className="text-xs text-zinc-500">API: {API_BASE} — stored in localStorage only.</p>
-      </div>
 
       <nav className="flex flex-wrap gap-2">
         {tabs.map((t) => (

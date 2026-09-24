@@ -44,6 +44,11 @@ class RefreshOut(BaseModel):
     token_type: str = "bearer"
 
 
+class AdminLoginIn(BaseModel):
+    username: str = Field(..., min_length=1, max_length=100)
+    password: str = Field(..., min_length=1, max_length=200)
+
+
 class UserOut(BaseModel):
     id: UUID
     phone: str

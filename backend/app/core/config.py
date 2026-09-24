@@ -31,5 +31,12 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     prometheus_enabled: bool = True
 
+    # Admin UI password login (dashboard only — API data still needs the JWT).
+    # Plain password is NEVER stored: set ADMIN_PASSWORD_HASH to a bcrypt hash
+    # (generate: python -c "from app.core.security import hash_password;
+    #  print(hash_password('...'))"). Empty hash disables the endpoint.
+    admin_username: str = "admin"
+    admin_password_hash: str = ""
+
 
 settings = Settings()

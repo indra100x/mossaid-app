@@ -1,4 +1,5 @@
 import re
+import secrets
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,9 +9,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_session
 from app.core.deps import CurrentUser
-from app.core.security import create_access_token, create_refresh_token, decode_token
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    verify_password,
+)
 from app.models.user import User
 from app.modules.auth.schemas import (
+    AdminLoginIn,
     RefreshIn,
     RefreshOut,
     RequestOtpIn,
@@ -108,6 +115,45 @@ async def refresh_token(payload: RefreshIn) -> RefreshOut:
 @router.get("/me", response_model=UserOut)
 async def get_me(current_user: CurrentUser) -> UserOut:
     return UserOut.from_user(current_user)
+
+
+@router.post("/admin-login", response_model=TokenOut, status_code=status.HTTP_200_OK)
+async def admin_login(
+    payload: AdminLoginIn,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> TokenOut:
+    """Password login for the admin dashboard (non-technical admins).
+
+    Credentials come from ADMIN_USERNAME / ADMIN_PASSWORD_HASH env (bcrypt hash,
+    never plaintext). Empty hash disables the endpoint. Issues a super_admin
+    JWT, so all dashboard tabs work with no manual token handling.
+    """
+    if not settings.admin_password_hash:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Admin password login is not configured")
+    username_ok = secrets.compare_digest(payload.username.strip(), settings.admin_username)
+    password_ok = verify_password(payload.password, settings.admin_password_hash)
+    if not (username_ok and password_ok):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    phone = f"admin:{settings.admin_username}"
+    result = await session.execute(select(User).where(User.phone == phone))
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(phone=phone, role="super_admin", name="Admin", language_pref="fr", is_verified=True)
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+    elif user.is_suspended:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User suspended")
+
+    from app.core.audit import log_audit
+
+    await log_audit(session, user.id, "admin.login", "user", str(user.id))
+    await session.commit()
+
+    access = create_access_token(subject=str(user.id))
+    refresh = create_refresh_token(subject=str(user.id))
+    return TokenOut(access_token=access, refresh_token=refresh, user=UserOut.from_user(user))
 
 
 @router.get("/")

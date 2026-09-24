@@ -45,6 +45,11 @@ services:
       PROMETHEUS_ENABLED: ${PROMETHEUS_ENABLED:-true}
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
       FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
+      # Admin dashboard password login (local-dev default below is the bcrypt
+      # hash of a throwaway password — override both vars in any shared/prod
+      # deploy; empty ADMIN_PASSWORD_HASH disables the endpoint entirely).
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-$$2b$$12$$mt7MxJTundPl10NY9hJEE.gyykt1QuUbLrlBcFcX3o92PLP09R8Mq}
       # Chargily sandbox by default; prod deploy overrides with live keys.
       CHARGILY_API_KEY: ${CHARGILY_API_KEY:-test_6f2d8e2a-1234-4a5b-9c9d-test_sandbox_key}
       CHARGILY_API_SECRET: ${CHARGILY_API_SECRET:-test_sandbox_secret_do_not_use_in_prod}
