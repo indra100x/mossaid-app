@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api.dart';
@@ -14,6 +16,19 @@ class Session extends ChangeNotifier {
   String? get name => user?['name'] as String?;
 
   Future<void> load() async {
+    try {
+      await _restore().timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Never trap the user on a splash screen: proceed to the
+      // landing page even if restore is slow or fails.
+      api.token = null;
+      user = null;
+    }
+    loaded = true;
+    notifyListeners();
+  }
+
+  Future<void> _restore() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     if (token != null) {
@@ -25,8 +40,6 @@ class Session extends ChangeNotifier {
         await prefs.remove('token');
       }
     }
-    loaded = true;
-    notifyListeners();
   }
 
   Future<String?> auth({

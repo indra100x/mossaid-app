@@ -5,14 +5,22 @@ import 'package:mossaid_simple/session.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('Auth screen shows login/register', (tester) async {
+  testWidgets('Landing shows logo, login/register and version', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final api = ApiClient(baseUrl: 'http://localhost:8000/api');
     final session = Session(api)..loaded = true; // skip async token restore
     await tester.pumpWidget(MossaidSimple(session: session, api: api));
     await tester.pump();
+
+    expect(find.text('Mossaid'), findsOneWidget);
+    expect(find.text('Login'), findsOneWidget);
+    expect(find.text('Create account'), findsOneWidget);
+    expect(find.textContaining('1.0.1'), findsOneWidget);
+
+    // Tapping login opens the auth screen in login mode.
+    await tester.tap(find.text('Login'));
+    await tester.pumpAndSettle();
     expect(find.text('Mossaid — crafts marketplace'), findsOneWidget);
-    expect(find.text('Login'), findsWidgets);
   });
 
   test('ApiClient builds auth headers', () {

@@ -23,6 +23,19 @@ class ApiClient {
     if (token != null) 'Authorization': 'Bearer $token',
   };
 
+  /// Lightweight reachability check for the landing page.
+  /// Returns true when the API answers /health.
+  Future<bool> ping() async {
+    try {
+      final res = await http
+          .get(Uri.parse('$baseUrl/health'))
+          .timeout(const Duration(seconds: 8));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<Map<String, dynamic>> register({
     required String name,
     required String email,

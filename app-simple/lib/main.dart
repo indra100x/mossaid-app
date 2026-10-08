@@ -8,6 +8,9 @@ void main() {
   runApp(MossaidSimple(session: Session(api)..load(), api: api));
 }
 
+/// Update this when releasing a new APK so we can tell builds apart.
+const String kAppVersion = '1.0.1 (build 2)';
+
 class MossaidSimple extends StatelessWidget {
   const MossaidSimple({super.key, required this.session, required this.api});
   final Session session;
@@ -18,13 +21,185 @@ class MossaidSimple extends StatelessWidget {
     return ListenableBuilder(
       listenable: session,
       builder: (_, __) => MaterialApp(
-        title: 'Mossaid Simple',
+        title: 'Mossaid',
         theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
         home: !session.loaded
             ? const Scaffold(body: Center(child: CircularProgressIndicator()))
             : session.loggedIn
             ? HomeScreen(session: session, api: api)
-            : AuthScreen(session: session),
+            : LandingScreen(session: session, api: api),
+      ),
+    );
+  }
+}
+
+// ---------- Landing ----------
+
+class LandingScreen extends StatefulWidget {
+  const LandingScreen({super.key, required this.session, required this.api});
+  final Session session;
+  final ApiClient api;
+  @override
+  State<LandingScreen> createState() => _LandingScreenState();
+}
+
+class _LandingScreenState extends State<LandingScreen> {
+  bool? serverOk;
+  bool checking = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  Future<void> _check() async {
+    setState(() {
+      checking = true;
+    });
+    final ok = await widget.api.ping();
+    if (!mounted) return;
+    setState(() {
+      serverOk = ok;
+      checking = false;
+    });
+  }
+
+  void _go(bool login) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            AuthScreen(session: widget.session, initialIsLogin: login),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Logo mark (mirrors the launcher icon).
+                Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(26),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0xFF14B8A6), Color(0xFF0D6E64)],
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'M',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 64,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Mossaid',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Find trusted craftsmen nearby.\nPost jobs, chat, get work done.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => _go(true),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 6),
+                      child: Text('Login', style: TextStyle(fontSize: 17)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => _go(false),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 6),
+                      child: Text(
+                        'Create account',
+                        style: TextStyle(fontSize: 17),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Server reachability — answers "is the app stuck or is it the network?"
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (checking)
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else
+                        Icon(
+                          serverOk == true ? Icons.wifi : Icons.wifi_off,
+                          size: 18,
+                          color: serverOk == true ? Colors.green : Colors.red,
+                        ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          checking
+                              ? 'Checking server…'
+                              : serverOk == true
+                              ? 'Server reachable ✓'
+                              : 'Server NOT reachable — check Wi-Fi / server',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh, size: 18),
+                        tooltip: 'Recheck',
+                        onPressed: _check,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'v$kAppVersion',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -33,8 +208,13 @@ class MossaidSimple extends StatelessWidget {
 // ---------- Auth ----------
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, required this.session});
+  const AuthScreen({
+    super.key,
+    required this.session,
+    this.initialIsLogin = true,
+  });
   final Session session;
+  final bool initialIsLogin;
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
@@ -48,6 +228,12 @@ class _AuthScreenState extends State<AuthScreen> {
   final city = TextEditingController();
   String? error;
   bool busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    isLogin = widget.initialIsLogin;
+  }
 
   @override
   Widget build(BuildContext context) {
