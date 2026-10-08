@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'api.dart';
+import 'design_tokens.dart';
+import 'job_timeline.dart';
 import 'meta.dart';
 import 'session.dart';
 
@@ -10,51 +12,136 @@ void main() {
   runApp(MossaidSimple(session: Session(api)..load(), api: api));
 }
 
-/// Update this when releasing a new APK so we can tell builds apart.
-const String kAppVersion = '1.0.3 (build 4)';
-
-const Color kTeal = Color(0xFF0F766E);
-const Color kTealLight = Color(0xFF14B8A6);
-const Color kAmber = Color(0xFFF59E0B);
-
 ThemeData buildTheme() {
-  final scheme = ColorScheme.fromSeed(seedColor: kTeal, secondary: kAmber);
+  final scheme = ColorScheme.fromSeed(
+    seedColor: kTeal,
+    secondary: kAmber,
+    surface: Colors.white,
+  );
+  final baseText = Typography.englishLike2021.apply(fontFamily: 'Jakarta');
   return ThemeData(
     colorScheme: scheme,
+    scaffoldBackgroundColor: kPaper,
     useMaterial3: true,
-    appBarTheme: const AppBarTheme(centerTitle: false),
-    inputDecorationTheme: InputDecorationTheme(
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.grey.shade300),
+    fontFamily: 'Jakarta',
+    textTheme: baseText.copyWith(
+      titleLarge: baseText.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+      titleMedium: baseText.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+    ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: kPaper,
+      foregroundColor: kInk,
+      elevation: 0,
+      scrolledUnderElevation: 1,
+      titleTextStyle: TextStyle(
+        fontFamily: 'Jakarta',
+        fontSize: 19,
+        fontWeight: FontWeight.w700,
+        color: kInk,
       ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.grey.shade50,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 15,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      focusedBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+        borderSide: BorderSide(color: kTeal, width: 1.6),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.red.shade300),
+      ),
+      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
     ),
     cardTheme: CardThemeData(
       elevation: 0,
+      color: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(20),
       ),
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      shadowColor: kInk.withValues(alpha: 0.08),
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        backgroundColor: kTeal,
+        foregroundColor: Colors.white,
+        textStyle: const TextStyle(
+          fontFamily: 'Jakarta',
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 22),
+        elevation: 0,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        foregroundColor: kTeal,
+        side: const BorderSide(color: kTeal, width: 1.4),
+        textStyle: const TextStyle(
+          fontFamily: 'Jakarta',
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 22),
       ),
     ),
-    chipTheme: const ChipThemeData(
-      padding: EdgeInsets.symmetric(horizontal: 8),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: kTeal,
+        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: Colors.white,
+      selectedColor: kTeal,
+      labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: Colors.white,
+      indicatorColor: kTeal.withValues(alpha: 0.14),
+      labelTextStyle: WidgetStateProperty.all(
+        const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+    ),
+    dialogTheme: const DialogThemeData(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(24)),
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+    ),
+    dividerTheme: DividerThemeData(
+      color: Colors.grey.shade200,
+      thickness: 1,
     ),
   );
 }
@@ -73,7 +160,7 @@ class LogoMark extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [kTealLight, Color(0xFF0D6E64)],
+          colors: [kTealBright, kTealDeep],
         ),
         boxShadow: [
           BoxShadow(
@@ -400,7 +487,25 @@ class _LandingScreenState extends State<LandingScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey, fontSize: 13),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _LandingPerk(
+                        icon: Icons.search_outlined,
+                        label: 'Discover',
+                      ),
+                      _LandingPerk(
+                        icon: Icons.chat_bubble_outline,
+                        label: 'Chat on deal',
+                      ),
+                      _LandingPerk(
+                        icon: Icons.star_outline,
+                        label: 'Rated pros',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
@@ -829,6 +934,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final labels = isCraft ? craftTitles : titles;
     return Scaffold(
       appBar: AppBar(
+        leadingWidth: 56,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 14, top: 8, bottom: 8),
+          child: InitialAvatar(
+            name: widget.session.name ?? '?',
+            radius: 20,
+          ),
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1029,190 +1142,43 @@ class _PostsTabState extends State<PostsTab> {
                     itemCount: items.length,
                     itemBuilder: (_, i) {
                       final p = items[i] as Map<String, dynamic>;
-                      final u = (p['user'] as Map?) ?? {};
-                      final photos = ((p['photos'] as List?) ?? [])
-                          .map((e) => '$e')
-                          .where((e) => e.isNotEmpty)
-                          .toList();
-                      final rating =
-                          ((u['rating_avg'] as num?)?.toDouble() ?? 0);
-                      final ratingCount =
-                          ((u['rating_count'] as num?)?.toInt() ?? 0);
-                      return Card(
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => PostDetailScreen(
-                                  api: widget.api,
-                                  postId: (p['id'] as num).toInt(),
-                                ),
+                      return PostCard(
+                        api: widget.api,
+                        post: p,
+                        onOpen: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PostDetailScreen(
+                                api: widget.api,
+                                postId: (p['id'] as num).toInt(),
                               ),
-                            );
-                            _load();
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    InkWell(
-                                      onTap: () {
-                                        final id = (u['id'] as num?)?.toInt();
-                                        if (id != null) {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  CraftsmanProfileScreen(
-                                                    api: widget.api,
-                                                    userId: id,
-                                                  ),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                      child: InitialAvatar(
-                                        name: (u['name'] ?? '?') as String,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            p['title'] ?? '',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                          Row(
-                                            children: [
-                                              Text(
-                                                '${u['name'] ?? ''}${(p['city'] ?? '') != '' ? ' · ${p['city']}' : ''}',
-                                                style: TextStyle(
-                                                  color: Colors.grey.shade600,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                              if (ratingCount > 0) ...[
-                                                const SizedBox(width: 6),
-                                                RatingStars(
-                                                  value: rating,
-                                                  size: 13,
-                                                ),
-                                                Text(
-                                                  ' ($ratingCount)',
-                                                  style: TextStyle(
-                                                    color:
-                                                        Colors.grey.shade600,
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    TradeChip(
-                                      trade: (p['trade'] ?? '') as String,
-                                    ),
-                                  ],
-                                ),
-                                if (photos.isNotEmpty) ...[
-                                  const SizedBox(height: 10),
-                                  Stack(
-                                    children: [
-                                      NetImage(url: photos.first),
-                                      if (photos.length > 1)
-                                        Positioned(
-                                          right: 8,
-                                          bottom: 8,
-                                          child: Container(
-                                            padding:
-                                                const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 4,
-                                                ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.black54,
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              '+${photos.length - 1} photos',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                                const SizedBox(height: 8),
-                                Text(
-                                  (p['description'] ?? '') as String,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: Colors.grey.shade800),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.favorite,
-                                      size: 16,
-                                      color: Colors.red.shade400,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text('${p['likes_count'] ?? 0}'),
-                                    const SizedBox(width: 16),
-                                    Icon(
-                                      Icons.chat_bubble_outline,
-                                      size: 16,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${(p['comments_count'] as num?)?.toInt() ?? 0}',
-                                    ),
-                                    if ((p['price_hint']) != null) ...[
-                                      const Spacer(),
-                                      Text(
-                                        '${p['price_hint']} DZD',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: kTeal,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ],
                             ),
-                          ),
-                        ),
+                          );
+                          _load();
+                        },
+                        onProfile: (id) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CraftsmanProfileScreen(
+                                api: widget.api,
+                                userId: id,
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
                 ),
-        ),
-      ],
-    );
+              ),
+        ],
+      );
+    }
   }
-}
 
-class PostFormScreen extends StatefulWidget {
+  class PostFormScreen extends StatefulWidget {
   const PostFormScreen({super.key, required this.api});
   final ApiClient api;
   @override
@@ -2451,6 +2417,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
       appBar: AppBar(title: Text(job!['title'] ?? 'Job')),
       body: Column(
         children: [
+          JobTimeline(status: st),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(14),
@@ -3521,6 +3488,332 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ---------- Marketplace post card (image-first) ----------
+
+class PostCard extends StatelessWidget {
+  const PostCard({
+    super.key,
+    required this.api,
+    required this.post,
+    required this.onOpen,
+    required this.onProfile,
+  });
+  final ApiClient api;
+  final Map<String, dynamic> post;
+  final VoidCallback onOpen;
+  final ValueChanged<int> onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = post;
+    final u = (p['user'] as Map?) ?? {};
+    final photos = ((p['photos'] as List?) ?? [])
+        .map((e) => '$e')
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final rating = ((u['rating_avg'] as num?)?.toDouble() ?? 0);
+    final ratingCount = ((u['rating_count'] as num?)?.toInt() ?? 0);
+    final commentCount = ((p['comments_count'] as num?)?.toInt() ?? 0);
+    final trade = (p['trade'] ?? '') as String;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (photos.isNotEmpty)
+              Stack(
+                children: [
+                  Image.network(
+                    photos.first,
+                    height: 190,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (c, child, progress) => progress == null
+                        ? child
+                        : Container(
+                            height: 190,
+                            color: Colors.grey.shade200,
+                            child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                    errorBuilder: (c, e, s) => Container(
+                      height: 120,
+                      color: Colors.grey.shade100,
+                      child: const Center(
+                        child: Icon(Icons.broken_image_outlined),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.3),
+                          ],
+                          stops: const [0.65, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 12,
+                    top: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        MetaCache.label(trade),
+                        style: const TextStyle(
+                          color: kTeal,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (photos.length > 1)
+                    Positioned(
+                      right: 12,
+                      bottom: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.photo_library_outlined,
+                              size: 13,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${photos.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              )
+            else
+              Container(
+                height: 84,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      tradeColor(trade).withValues(alpha: 0.9),
+                      tradeColor(trade).withValues(alpha: 0.55),
+                    ],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: const BoxDecoration(
+                        color: Colors.white24,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        tradeIcon(_tradeIconKey(trade)),
+                        color: Colors.white,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      MetaCache.label(trade),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      InkWell(
+                        onTap: () {
+                          final id = (u['id'] as num?)?.toInt();
+                          if (id != null) onProfile(id);
+                        },
+                        child: InitialAvatar(
+                          name: (u['name'] ?? '?') as String,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              p['title'] ?? '',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    '${u['name'] ?? ''}${(p['city'] ?? '') != '' ? ' · ${p['city']}' : ''}',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                                if (ratingCount > 0) ...[
+                                  const SizedBox(width: 6),
+                                  RatingStars(value: rating, size: 13),
+                                  Text(
+                                    ' ($ratingCount)',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    (p['description'] ?? '') as String,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.favorite,
+                        size: 16,
+                        color: Colors.red.shade400,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${p['likes_count'] ?? 0}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(width: 16),
+                      Icon(
+                        Icons.chat_bubble_outline,
+                        size: 16,
+                        color: Colors.grey.shade500,
+                      ),
+                      const SizedBox(width: 4),
+                      Text('$commentCount'),
+                      const Spacer(),
+                      if ((p['price_hint']) != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: kTeal.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${p['price_hint']} DZD',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: kTeal,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _tradeIconKey(String slug) {
+  for (final t in MetaCache.trades) {
+    if (t['slug'] == slug) return (t['icon'] ?? 'work') as String;
+  }
+  return 'work';
+}
+
+// ---------- Landing perk chip ----------
+
+class _LandingPerk extends StatelessWidget {
+  const _LandingPerk({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: kTeal.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: kTeal, size: 20),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }
