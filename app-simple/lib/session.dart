@@ -75,6 +75,20 @@ class Session extends ChangeNotifier {
     }
   }
 
+  /// Replace the cached user (after profile edit) and notify.
+  void updateUser(Map<String, dynamic> fresh) {
+    user = Map<String, dynamic>.from(fresh);
+    notifyListeners();
+  }
+
+  /// Re-fetch /me (e.g. after a review changed your rating).
+  Future<void> refresh() async {
+    try {
+      user = await api.me();
+      notifyListeners();
+    } catch (_) {}
+  }
+
   Future<void> logout() async {
     try {
       await api.me().then((_) => api.token = api.token);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AppNotification;
 use App\Models\Job;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -45,6 +46,7 @@ class JobController extends Controller
             'trade' => ['required', 'string', 'max:60'],
             'city' => ['nullable', 'string', 'max:80'],
             'budget' => ['nullable', 'integer', 'min:0'],
+            'cover_photo' => ['nullable', 'url', 'max:500'],
             'craftsman_id' => ['nullable', 'exists:users,id'],
         ]);
 
@@ -68,6 +70,13 @@ class JobController extends Controller
 
         $job->update(['status' => 'accepted', 'accepted_user_id' => $user->id]);
 
+        AppNotification::notify(
+            $job->user_id, 'job.accepted',
+            "{$user->name} accepted your job",
+            "“{$job->title}” — chat is now open.",
+            ['job_id' => $job->id],
+        );
+
         return response()->json($job->fresh());
     }
 
@@ -77,6 +86,15 @@ class JobController extends Controller
         abort_unless($job->status === 'accepted', 409, 'Only accepted jobs can be completed.');
 
         $job->update(['status' => 'completed']);
+
+        if ($job->accepted_user_id) {
+            AppNotification::notify(
+                $job->accepted_user_id, 'job.completed',
+                'Job marked completed',
+                "“{$job->title}” — the client closed the job.",
+                ['job_id' => $job->id],
+            );
+        }
 
         return response()->json($job->fresh());
     }

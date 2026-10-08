@@ -12,7 +12,7 @@ class Job extends Model
 
     protected $fillable = [
         'user_id', 'craftsman_id', 'accepted_user_id',
-        'title', 'description', 'trade', 'city', 'budget', 'status',
+        'title', 'description', 'trade', 'city', 'budget', 'cover_photo', 'status',
     ];
 
     public function client(): BelongsTo

@@ -80,11 +80,16 @@ class ApiClient {
     );
   }
 
-  Future<Map<String, dynamic>> posts({String? trade, String? q}) async {
+  Future<Map<String, dynamic>> posts({
+    String? trade,
+    String? q,
+    bool mine = false,
+  }) async {
     final uri = Uri.parse('$baseUrl/posts').replace(
       queryParameters: {
         if (trade != null && trade.isNotEmpty) 'trade': trade,
         if (q != null && q.isNotEmpty) 'q': q,
+        if (mine) 'mine': '1',
       },
     );
     return _decode(http.get(uri, headers: _headers), 200);
@@ -193,6 +198,125 @@ class ApiClient {
   Future<Map<String, dynamic>> jobShow(int id) async {
     return _decode(
       http.get(Uri.parse('$baseUrl/jobs/$id'), headers: _headers),
+      200,
+    );
+  }
+
+  // ---------- Marketplace+ ----------
+
+  Map<String, dynamic>? _metaCache;
+
+  Future<Map<String, dynamic>> meta() async {
+    if (_metaCache != null) return _metaCache!;
+    final body = await _decode(http.get(Uri.parse('$baseUrl/meta')), 200);
+    _metaCache = body;
+    return body;
+  }
+
+  /// Uploads an image file, returns the public URL.
+  Future<String> uploadPhoto(String filePath, {String folder = 'posts'}) async {
+    final req = http.MultipartRequest('POST', Uri.parse('$baseUrl/uploads'));
+    req.headers.addAll(_headers);
+    req.fields['folder'] = folder;
+    req.files.add(await http.MultipartFile.fromPath('photo', filePath));
+    http.StreamedResponse streamed;
+    try {
+      streamed = await req.send().timeout(const Duration(seconds: 30));
+    } on TimeoutException {
+      throw ApiException('Upload timed out. Try a smaller photo.', 0);
+    } catch (e) {
+      throw ApiException('Upload failed: $e', 0);
+    }
+    final res = await http.Response.fromStream(streamed);
+    final body = await _decode(Future.value(res), 201);
+    final url = (body['url'] ?? '') as String;
+    if (url.isEmpty) throw ApiException('Upload failed (no URL).', 0);
+    return url;
+  }
+
+  Future<Map<String, dynamic>> craftsmanProfile(int userId) async {
+    return _decode(
+      http.get(Uri.parse('$baseUrl/craftsmen/$userId'), headers: _headers),
+      200,
+    );
+  }
+
+  Future<Map<String, dynamic>> createReview(
+    int jobId,
+    int rating,
+    String? comment,
+  ) async {
+    return _decode(
+      http.post(
+        Uri.parse('$baseUrl/jobs/$jobId/reviews'),
+        headers: _headers,
+        body: jsonEncode({
+          'rating': rating,
+          if (comment != null && comment.isNotEmpty) 'comment': comment,
+        }),
+      ),
+      201,
+    );
+  }
+
+  Future<Map<String, dynamic>> notifications() async {
+    return _decode(
+      http.get(Uri.parse('$baseUrl/notifications'), headers: _headers),
+      200,
+    );
+  }
+
+  Future<Map<String, dynamic>> markNotificationsRead([List<int>? ids]) async {
+    return _decode(
+      http.post(
+        Uri.parse('$baseUrl/notifications/read'),
+        headers: _headers,
+        body: jsonEncode({if (ids != null) 'ids': ids}),
+      ),
+      200,
+    );
+  }
+
+  Future<Map<String, dynamic>> updateProfile(
+    Map<String, dynamic> data,
+  ) async {
+    return _decode(
+      http.patch(
+        Uri.parse('$baseUrl/auth/profile'),
+        headers: _headers,
+        body: jsonEncode(data),
+      ),
+      200,
+    );
+  }
+
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    return _decode(
+      http.post(
+        Uri.parse('$baseUrl/auth/forgot'),
+        headers: _headers,
+        body: jsonEncode({'email': email}),
+      ),
+      200,
+    );
+  }
+
+  Future<Map<String, dynamic>> resetPassword(
+    String email,
+    String code,
+    String password,
+  ) async {
+    return _decode(
+      http.post(
+        Uri.parse('$baseUrl/auth/reset'),
+        headers: _headers,
+        body: jsonEncode({
+          'email': email,
+          'code': code,
+          'password': password,
+          'password_confirmation': password,
+        }),
+      ),
       200,
     );
   }

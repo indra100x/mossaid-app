@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'api.dart';
+import 'meta.dart';
 import 'session.dart';
 
 void main() {
@@ -9,7 +11,7 @@ void main() {
 }
 
 /// Update this when releasing a new APK so we can tell builds apart.
-const String kAppVersion = '1.0.2 (build 3)';
+const String kAppVersion = '1.0.3 (build 4)';
 
 const Color kTeal = Color(0xFF0F766E);
 const Color kTealLight = Color(0xFF14B8A6);
@@ -215,6 +217,65 @@ String shortTime(String? iso) {
     return '$hh:$mm';
   } catch (_) {
     return '';
+  }
+}
+
+/// Star rating display (supports halves).
+class RatingStars extends StatelessWidget {
+  const RatingStars({super.key, required this.value, this.size = 16});
+  final double value;
+  final double size;
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 1; i <= 5; i++)
+          Icon(
+            value >= i - 0.25
+                ? Icons.star
+                : value >= i - 0.75
+                ? Icons.star_half
+                : Icons.star_border,
+            size: size,
+            color: Colors.amber.shade700,
+          ),
+      ],
+    );
+  }
+}
+
+/// Network image with placeholder + error state (feed-friendly).
+class NetImage extends StatelessWidget {
+  const NetImage({super.key, required this.url, this.height = 170});
+  final String url;
+  final double height;
+  @override
+  Widget build(BuildContext context) {
+    if (url.isEmpty) return const SizedBox.shrink();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        url,
+        height: height,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        loadingBuilder: (c, child, progress) => progress == null
+            ? child
+            : Container(
+                height: height,
+                color: Colors.grey.shade200,
+                child: const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+        errorBuilder: (c, e, s) => Container(
+          height: 90,
+          color: Colors.grey.shade100,
+          child: const Center(child: Icon(Icons.broken_image_outlined)),
+        ),
+      ),
+    );
   }
 }
 
@@ -669,6 +730,20 @@ class _AuthScreenState extends State<AuthScreen> {
                           : 'Already registered? Login',
                     ),
                   ),
+                  if (isLogin)
+                    TextButton(
+                      onPressed: busy
+                          ? null
+                          : () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ForgotPasswordScreen(
+                                  api: widget.session.api,
+                                ),
+                              ),
+                            ),
+                      child: const Text('Forgot password?'),
+                    ),
                 ],
               ),
             ),
@@ -690,16 +765,68 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Land on Jobs: clients track requests, craftsmen find work.
-  int tab = 1;
-  static const titles = ['Portfolio posts', 'Jobs', 'Account'];
+  int tab = 0;
+  int unread = 0;
+
+  bool get isCraft => widget.session.isCraftsman;
+
+  @override
+  void initState() {
+    super.initState();
+    // Clients land on Discover, craftsmen on Requests.
+    tab = isCraft ? 1 : 0;
+    MetaCache.ensure(widget.api);
+    _refreshUnread();
+  }
+
+  Future<void> _refreshUnread() async {
+    try {
+      final n = await widget.api.notifications();
+      if (!mounted) return;
+      setState(() => unread = (n['unread_count'] as num?)?.toInt() ?? 0);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      PostsTab(api: widget.api, isCraftsman: widget.session.isCraftsman),
-      JobsTab(api: widget.api, session: widget.session),
-      AccountTab(session: widget.session),
-    ];
+    // Client: Discover · My Jobs · Alerts · Account
+    // Craftsman: My Work · Requests · Alerts · Account
+    final pages = isCraft
+        ? [
+            PostsTab(
+              api: widget.api,
+              isCraftsman: true,
+              onlyMine: true,
+            ),
+            JobsTab(
+              api: widget.api,
+              session: widget.session,
+              mode: JobMode.requests,
+            ),
+            NotificationsTab(
+              api: widget.api,
+              session: widget.session,
+              onRead: _refreshUnread,
+            ),
+            AccountTab(session: widget.session, api: widget.api),
+          ]
+        : [
+            PostsTab(api: widget.api, isCraftsman: false),
+            JobsTab(
+              api: widget.api,
+              session: widget.session,
+              mode: JobMode.mine,
+            ),
+            NotificationsTab(
+              api: widget.api,
+              session: widget.session,
+              onRead: _refreshUnread,
+            ),
+            AccountTab(session: widget.session, api: widget.api),
+          ];
+    const titles = ['Discover', 'Jobs', 'Alerts', 'Account'];
+    const craftTitles = ['My work', 'Requests', 'Alerts', 'Account'];
+    final labels = isCraft ? craftTitles : titles;
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -710,7 +837,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
-              titles[tab],
+              labels[tab],
               style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             ),
           ],
@@ -719,11 +846,31 @@ class _HomeScreenState extends State<HomeScreen> {
       body: pages[tab],
       bottomNavigationBar: NavigationBar(
         selectedIndex: tab,
-        onDestinationSelected: (i) => setState(() => tab = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.store), label: 'Posts'),
-          NavigationDestination(icon: Icon(Icons.work), label: 'Jobs'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Account'),
+        onDestinationSelected: (i) {
+          setState(() => tab = i);
+          if (i == 2) _refreshUnread();
+        },
+        destinations: [
+          NavigationDestination(
+            icon: Icon(isCraft ? Icons.store_outlined : Icons.explore_outlined),
+            label: labels[0],
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.work_outline),
+            label: 'Jobs',
+          ),
+          NavigationDestination(
+            icon: Badge(
+              isLabelVisible: unread > 0,
+              label: Text('$unread'),
+              child: const Icon(Icons.notifications_outlined),
+            ),
+            label: labels[2],
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            label: 'Account',
+          ),
         ],
       ),
     );
@@ -734,9 +881,15 @@ List<dynamic> _pageItems(Map<String, dynamic> page) =>
     (page['data'] as List?) ?? [];
 
 class PostsTab extends StatefulWidget {
-  const PostsTab({super.key, required this.api, required this.isCraftsman});
+  const PostsTab({
+    super.key,
+    required this.api,
+    required this.isCraftsman,
+    this.onlyMine = false,
+  });
   final ApiClient api;
   final bool isCraftsman;
+  final bool onlyMine;
   @override
   State<PostsTab> createState() => _PostsTabState();
 }
@@ -745,6 +898,7 @@ class _PostsTabState extends State<PostsTab> {
   List<dynamic> items = [];
   bool loading = true;
   String? error;
+  String? trade;
   final search = TextEditingController();
 
   @override
@@ -761,12 +915,16 @@ class _PostsTabState extends State<PostsTab> {
     try {
       final page = await widget.api.posts(
         q: search.text.trim().isEmpty ? null : search.text.trim(),
+        trade: trade,
+        mine: widget.onlyMine,
       );
+      if (!mounted) return;
       setState(() => items = _pageItems(page));
     } on ApiException catch (e) {
+      if (!mounted) return;
       setState(() => error = e.message);
     } finally {
-      setState(() => loading = false);
+      if (mounted) setState(() => loading = false);
     }
   }
 
@@ -775,7 +933,7 @@ class _PostsTabState extends State<PostsTab> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
           child: Row(
             children: [
               Expanded(
@@ -786,12 +944,50 @@ class _PostsTabState extends State<PostsTab> {
                     hintText: 'Search painter, plumber…',
                     border: OutlineInputBorder(),
                   ),
+                  onSubmitted: (_) => _load(),
                 ),
               ),
               IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
             ],
           ),
         ),
+        if (!widget.onlyMine && MetaCache.trades.isNotEmpty)
+          SizedBox(
+            height: 46,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 6, top: 8),
+                  child: ChoiceChip(
+                    label: const Text('All'),
+                    selected: trade == null,
+                    onSelected: (_) => setState(() {
+                      trade = null;
+                      _load();
+                    }),
+                  ),
+                ),
+                for (final t in MetaCache.trades)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6, top: 8),
+                    child: ChoiceChip(
+                      avatar: Icon(
+                        tradeIcon((t['icon'] ?? '') as String),
+                        size: 16,
+                      ),
+                      label: Text((t['label'] ?? '') as String),
+                      selected: trade == t['slug'],
+                      onSelected: (_) => setState(() {
+                        trade = t['slug'] as String;
+                        _load();
+                      }),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         if (widget.isCraftsman)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -834,8 +1030,14 @@ class _PostsTabState extends State<PostsTab> {
                     itemBuilder: (_, i) {
                       final p = items[i] as Map<String, dynamic>;
                       final u = (p['user'] as Map?) ?? {};
-                      final commentCount =
-                          (p['comments_count'] as num?)?.toInt() ?? 0;
+                      final photos = ((p['photos'] as List?) ?? [])
+                          .map((e) => '$e')
+                          .where((e) => e.isNotEmpty)
+                          .toList();
+                      final rating =
+                          ((u['rating_avg'] as num?)?.toDouble() ?? 0);
+                      final ratingCount =
+                          ((u['rating_count'] as num?)?.toInt() ?? 0);
                       return Card(
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
@@ -858,8 +1060,25 @@ class _PostsTabState extends State<PostsTab> {
                               children: [
                                 Row(
                                   children: [
-                                    InitialAvatar(
-                                      name: (u['name'] ?? '?') as String,
+                                    InkWell(
+                                      onTap: () {
+                                        final id = (u['id'] as num?)?.toInt();
+                                        if (id != null) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  CraftsmanProfileScreen(
+                                                    api: widget.api,
+                                                    userId: id,
+                                                  ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      child: InitialAvatar(
+                                        name: (u['name'] ?? '?') as String,
+                                      ),
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
@@ -874,12 +1093,31 @@ class _PostsTabState extends State<PostsTab> {
                                               fontSize: 16,
                                             ),
                                           ),
-                                          Text(
-                                            '${u['name'] ?? ''}${(p['city'] ?? '') != '' ? ' · ${p['city']}' : ''}',
-                                            style: TextStyle(
-                                              color: Colors.grey.shade600,
-                                              fontSize: 13,
-                                            ),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                '${u['name'] ?? ''}${(p['city'] ?? '') != '' ? ' · ${p['city']}' : ''}',
+                                                style: TextStyle(
+                                                  color: Colors.grey.shade600,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              if (ratingCount > 0) ...[
+                                                const SizedBox(width: 6),
+                                                RatingStars(
+                                                  value: rating,
+                                                  size: 13,
+                                                ),
+                                                Text(
+                                                  ' ($ratingCount)',
+                                                  style: TextStyle(
+                                                    color:
+                                                        Colors.grey.shade600,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -889,6 +1127,38 @@ class _PostsTabState extends State<PostsTab> {
                                     ),
                                   ],
                                 ),
+                                if (photos.isNotEmpty) ...[
+                                  const SizedBox(height: 10),
+                                  Stack(
+                                    children: [
+                                      NetImage(url: photos.first),
+                                      if (photos.length > 1)
+                                        Positioned(
+                                          right: 8,
+                                          bottom: 8,
+                                          child: Container(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 4,
+                                                ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black54,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              '+${photos.length - 1} photos',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
                                 const SizedBox(height: 8),
                                 Text(
                                   (p['description'] ?? '') as String,
@@ -913,7 +1183,9 @@ class _PostsTabState extends State<PostsTab> {
                                       color: Colors.grey.shade500,
                                     ),
                                     const SizedBox(width: 4),
-                                    Text('$commentCount'),
+                                    Text(
+                                      '${(p['comments_count'] as num?)?.toInt() ?? 0}',
+                                    ),
                                     if ((p['price_hint']) != null) ...[
                                       const Spacer(),
                                       Text(
@@ -946,19 +1218,58 @@ class PostFormScreen extends StatefulWidget {
   @override
   State<PostFormScreen> createState() => _PostFormScreenState();
 }
-
 class _PostFormScreenState extends State<PostFormScreen> {
   final formKey = GlobalKey<FormState>();
   final title = TextEditingController();
   final desc = TextEditingController();
-  final trade = TextEditingController(text: 'painter');
-  final city = TextEditingController();
+  final tradeFree = TextEditingController(text: 'painter');
+  final cityFree = TextEditingController();
   final price = TextEditingController();
+  String? trade;
+  String? city;
+  List<String> photos = [];
+  bool uploading = false;
   String? error;
   bool busy = false;
 
+  @override
+  void initState() {
+    super.initState();
+    trade = MetaCache.trades.any((t) => t['slug'] == 'painter')
+        ? 'painter'
+        : null;
+  }
+
+  Future<void> _pickPhoto() async {
+    if (photos.length >= 3 || uploading) return;
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        imageQuality: 80,
+      );
+      if (picked == null) return;
+      setState(() => uploading = true);
+      final url = await widget.api.uploadPhoto(picked.path, folder: 'posts');
+      if (!mounted) return;
+      setState(() => photos = [...photos, url]);
+    } catch (e) {
+      if (!mounted) return;
+      setState(
+        () => error = e is ApiException ? e.message : 'Photo failed: $e',
+      );
+    } finally {
+      if (mounted) setState(() => uploading = false);
+    }
+  }
+
   Future<void> _publish() async {
     if (!(formKey.currentState?.validate() ?? false)) return;
+    final finalTrade = (trade ?? tradeFree.text).trim();
+    if (finalTrade.isEmpty) {
+      setState(() => error = 'Trade is required');
+      return;
+    }
     setState(() {
       busy = true;
       error = null;
@@ -967,10 +1278,12 @@ class _PostFormScreenState extends State<PostFormScreen> {
       await widget.api.createPost({
         'title': title.text.trim(),
         'description': desc.text.trim(),
-        'trade': trade.text.trim(),
-        if (city.text.trim().isNotEmpty) 'city': city.text.trim(),
+        'trade': finalTrade,
+        if ((city ?? cityFree.text).trim().isNotEmpty)
+          'city': (city ?? cityFree.text).trim(),
         if (price.text.trim().isNotEmpty)
           'price_hint': int.tryParse(price.text.trim()),
+        if (photos.isNotEmpty) 'photos': photos,
       });
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
@@ -983,6 +1296,11 @@ class _PostFormScreenState extends State<PostFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tradeSlugs = MetaCache.trades
+        .map((t) => (t['slug'] ?? '') as String)
+        .where((s) => s.isNotEmpty)
+        .toList();
+    final cityOptions = MetaCache.cities;
     return Scaffold(
       appBar: AppBar(title: const Text('Showcase your work')),
       body: SingleChildScrollView(
@@ -992,36 +1310,150 @@ class _PostFormScreenState extends State<PostFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Photos (max 3).
+              SizedBox(
+                height: 96,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    for (final url in photos)
+                      Stack(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                url,
+                                width: 96,
+                                height: 96,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            right: 4,
+                            top: 4,
+                            child: InkWell(
+                              onTap: () => setState(
+                                () => photos = photos
+                                    .where((u) => u != url)
+                                    .toList(),
+                              ),
+                              child: const CircleAvatar(
+                                radius: 12,
+                                backgroundColor: Colors.black54,
+                                child: Icon(
+                                  Icons.close,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    InkWell(
+                      onTap: _pickPhoto,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: 96,
+                        height: 96,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: uploading
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.add_a_photo_outlined),
+                                  Text(
+                                    'Add photo',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
               TextFormField(
                 controller: title,
                 decoration: const InputDecoration(
                   labelText: 'Title',
                   prefixIcon: Icon(Icons.title_outlined),
                 ),
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? 'Give your post a title' : null,
+                validator: (v) => (v ?? '').trim().isEmpty
+                    ? 'Give your post a title'
+                    : null,
               ),
               const SizedBox(height: 10),
-              TextFormField(
-                controller: trade,
-                decoration: const InputDecoration(
-                  labelText: 'Trade (painter, plumber, electrician…)',
-                  prefixIcon: Icon(Icons.handyman_outlined),
+              if (tradeSlugs.isNotEmpty)
+                DropdownButtonFormField<String>(
+                  initialValue: tradeSlugs.contains(trade) ? trade : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Trade',
+                    prefixIcon: Icon(Icons.handyman_outlined),
+                  ),
+                  items: [
+                    for (final s in tradeSlugs)
+                      DropdownMenuItem(
+                        value: s,
+                        child: Text(MetaCache.label(s)),
+                      ),
+                  ],
+                  onChanged: (v) => setState(() => trade = v),
+                  validator: (v) =>
+                      v == null ? 'Pick your trade' : null,
+                )
+              else
+                TextFormField(
+                  controller: tradeFree,
+                  decoration: const InputDecoration(
+                    labelText: 'Trade (painter, plumber, electrician…)',
+                    prefixIcon: Icon(Icons.handyman_outlined),
+                  ),
+                  validator: (v) =>
+                      (v ?? '').trim().isEmpty ? 'Trade is required' : null,
                 ),
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? 'Trade is required' : null,
-              ),
               const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
-                    child: TextFormField(
-                      controller: city,
-                      decoration: const InputDecoration(
-                        labelText: 'City',
-                        prefixIcon: Icon(Icons.location_city_outlined),
-                      ),
-                    ),
+                    child: cityOptions.isNotEmpty
+                        ? DropdownButtonFormField<String>(
+                            initialValue:
+                                cityOptions.contains(city) ? city : null,
+                            decoration: const InputDecoration(
+                              labelText: 'City',
+                              prefixIcon: Icon(
+                                Icons.location_city_outlined,
+                              ),
+                            ),
+                            items: [
+                              for (final c in cityOptions)
+                                DropdownMenuItem(value: c, child: Text(c)),
+                            ],
+                            onChanged: (v) => setState(() => city = v),
+                          )
+                        : TextFormField(
+                            controller: cityFree,
+                            decoration: const InputDecoration(
+                              labelText: 'City',
+                              prefixIcon: Icon(
+                                Icons.location_city_outlined,
+                              ),
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -1097,6 +1529,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Map<String, dynamic>? post;
   List<dynamic> comments = [];
   bool liked = false;
+  int photoIndex = 0;
   String? error;
   final comment = TextEditingController();
 
@@ -1158,17 +1591,97 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       );
     }
     final u = (post!['user'] as Map?) ?? {};
+    final photos = ((post!['photos'] as List?) ?? [])
+        .map((e) => '$e')
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final rating = ((u['rating_avg'] as num?)?.toDouble() ?? 0);
+    final ratingCount = ((u['rating_count'] as num?)?.toInt() ?? 0);
     return Scaffold(
       appBar: AppBar(title: Text(post!['title'] ?? 'Post')),
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          Text(
-            '${u['name'] ?? ''} · ${post!['trade'] ?? ''} · ${post!['city'] ?? ''}',
-            style: const TextStyle(color: Colors.grey),
+          // Craftsman card → profile.
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              final id = (u['id'] as num?)?.toInt();
+              if (id != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CraftsmanProfileScreen(
+                      api: widget.api,
+                      userId: id,
+                    ),
+                  ),
+                );
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  InitialAvatar(name: (u['name'] ?? '?') as String),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          u['name'] ?? '',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        if (ratingCount > 0)
+                          Row(
+                            children: [
+                              RatingStars(value: rating, size: 14),
+                              Text(
+                                ' $rating ($ratingCount)',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          )
+                        else
+                          const Text(
+                            'New craftsman',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  TradeChip(trade: (post!['trade'] ?? '') as String),
+                  const Icon(Icons.chevron_right, color: Colors.grey),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(post!['description'] ?? ''),
+          const SizedBox(height: 10),
+          Text(post!['description'] ?? '', style: const TextStyle(fontSize: 15)),
+          if (photos.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 220,
+              child: PageView(
+                onPageChanged: (i) => setState(() => photoIndex = i),
+                children: [
+                  for (final url in photos) NetImage(url: url, height: 220),
+                ],
+              ),
+            ),
+            Text(
+              'Photo ${photoIndex + 1} of ${photos.length} — swipe →',
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
           const SizedBox(height: 8),
           Row(
             children: [
@@ -1270,10 +1783,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
 // ---------- Jobs ----------
 
+enum JobMode { all, mine, requests }
+
 class JobsTab extends StatefulWidget {
-  const JobsTab({super.key, required this.api, required this.session});
+  const JobsTab({
+    super.key,
+    required this.api,
+    required this.session,
+    this.mode = JobMode.all,
+  });
   final ApiClient api;
   final Session session;
+  final JobMode mode;
   @override
   State<JobsTab> createState() => _JobsTabState();
 }
@@ -1288,6 +1809,7 @@ class _JobsTabState extends State<JobsTab> {
   @override
   void initState() {
     super.initState();
+    if (widget.mode == JobMode.requests) status = 'open';
     _load();
   }
 
@@ -1300,6 +1822,7 @@ class _JobsTabState extends State<JobsTab> {
       final page = await widget.api.jobs(
         q: search.text.trim().isEmpty ? null : search.text.trim(),
         status: status.isEmpty ? null : status,
+        mine: widget.mode == JobMode.mine,
       );
       if (!mounted) return;
       setState(() {
@@ -1338,26 +1861,27 @@ class _JobsTabState extends State<JobsTab> {
             ],
           ),
         ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (final s in ['', 'open', 'accepted', 'completed'])
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ChoiceChip(
-                    label: Text(s.isEmpty ? 'all' : s),
-                    selected: status == s,
-                    onSelected: (_) {
-                      setState(() => status = s);
-                      _load();
-                    },
+        if (widget.mode != JobMode.requests)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final s in ['', 'open', 'accepted', 'completed'])
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: ChoiceChip(
+                      label: Text(s.isEmpty ? 'all' : s),
+                      selected: status == s,
+                      onSelected: (_) {
+                        setState(() => status = s);
+                        _load();
+                      },
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
-        ),
-        if (!isCraft)
+        if (!isCraft && widget.mode == JobMode.mine)
           Padding(
             padding: const EdgeInsets.all(8),
             child: SizedBox(
@@ -1458,6 +1982,13 @@ class _JobsTabState extends State<JobsTab> {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(color: Colors.grey.shade700),
                                 ),
+                                if ((j['cover_photo'] ?? '') != '') ...[
+                                  const SizedBox(height: 10),
+                                  NetImage(
+                                    url: (j['cover_photo'] ?? '') as String,
+                                    height: 140,
+                                  ),
+                                ],
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
@@ -1520,14 +2051,54 @@ class _JobFormScreenState extends State<JobFormScreen> {
   final formKey = GlobalKey<FormState>();
   final title = TextEditingController();
   final desc = TextEditingController();
-  final trade = TextEditingController(text: 'painter');
-  final city = TextEditingController();
+  final tradeFree = TextEditingController(text: 'painter');
+  final cityFree = TextEditingController();
   final budget = TextEditingController();
+  String? tradeSel;
+  String? citySel;
+  String? coverUrl;
+  bool uploading = false;
   String? error;
   bool busy = false;
 
+  @override
+  void initState() {
+    super.initState();
+    tradeSel = MetaCache.trades.any((t) => t['slug'] == 'painter')
+        ? 'painter'
+        : null;
+  }
+
+  Future<void> _pickCover() async {
+    if (uploading) return;
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        imageQuality: 80,
+      );
+      if (picked == null) return;
+      setState(() => uploading = true);
+      final url = await widget.api.uploadPhoto(picked.path, folder: 'jobs');
+      if (!mounted) return;
+      setState(() => coverUrl = url);
+    } catch (e) {
+      if (!mounted) return;
+      setState(
+        () => error = e is ApiException ? e.message : 'Photo failed: $e',
+      );
+    } finally {
+      if (mounted) setState(() => uploading = false);
+    }
+  }
+
   Future<void> _post() async {
     if (!(formKey.currentState?.validate() ?? false)) return;
+    final finalTrade = (tradeSel ?? tradeFree.text).trim();
+    if (finalTrade.isEmpty) {
+      setState(() => error = 'Trade is required');
+      return;
+    }
     setState(() {
       busy = true;
       error = null;
@@ -1536,10 +2107,12 @@ class _JobFormScreenState extends State<JobFormScreen> {
       await widget.api.createJob({
         'title': title.text.trim(),
         'description': desc.text.trim(),
-        'trade': trade.text.trim(),
-        if (city.text.trim().isNotEmpty) 'city': city.text.trim(),
+        'trade': finalTrade,
+        if ((citySel ?? cityFree.text).trim().isNotEmpty)
+          'city': (citySel ?? cityFree.text).trim(),
         if (budget.text.trim().isNotEmpty)
           'budget': int.tryParse(budget.text.trim()),
+        if (coverUrl != null) 'cover_photo': coverUrl,
       });
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
@@ -1549,9 +2122,13 @@ class _JobFormScreenState extends State<JobFormScreen> {
       if (mounted) setState(() => busy = false);
     }
   }
-
   @override
   Widget build(BuildContext context) {
+    final tradeSlugs = MetaCache.trades
+        .map((t) => (t['slug'] ?? '') as String)
+        .where((s) => s.isNotEmpty)
+        .toList();
+    final cityOptions = MetaCache.cities;
     return Scaffold(
       appBar: AppBar(title: const Text('Describe your job')),
       body: SingleChildScrollView(
@@ -1561,6 +2138,65 @@ class _JobFormScreenState extends State<JobFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Cover photo (optional).
+              InkWell(
+                onTap: _pickCover,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  height: 140,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: coverUrl != null
+                      ? Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                coverUrl!,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              right: 6,
+                              top: 6,
+                              child: InkWell(
+                                onTap: () =>
+                                    setState(() => coverUrl = null),
+                                child: const CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: Colors.black54,
+                                  child: Icon(
+                                    Icons.close,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : uploading
+                      ? const Center(
+                          child: CircularProgressIndicator(),
+                        )
+                      : const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_a_photo_outlined,
+                              size: 32,
+                            ),
+                            SizedBox(height: 4),
+                            Text('Add a photo of the job (optional)'),
+                          ],
+                        ),
+                ),
+              ),
+              const SizedBox(height: 10),
               TextFormField(
                 controller: title,
                 decoration: const InputDecoration(
@@ -1574,25 +2210,65 @@ class _JobFormScreenState extends State<JobFormScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: TextFormField(
-                      controller: trade,
-                      decoration: const InputDecoration(
-                        labelText: 'Trade needed',
-                        prefixIcon: Icon(Icons.handyman_outlined),
-                      ),
-                      validator: (v) =>
-                          (v ?? '').trim().isEmpty ? 'Required' : null,
-                    ),
+                    child: tradeSlugs.isNotEmpty
+                        ? DropdownButtonFormField<String>(
+                            initialValue: tradeSlugs.contains(tradeSel)
+                                ? tradeSel
+                                : null,
+                            decoration: const InputDecoration(
+                              labelText: 'Trade needed',
+                              prefixIcon: Icon(Icons.handyman_outlined),
+                            ),
+                            items: [
+                              for (final s in tradeSlugs)
+                                DropdownMenuItem(
+                                  value: s,
+                                  child: Text(MetaCache.label(s)),
+                                ),
+                            ],
+                            onChanged: (v) =>
+                                setState(() => tradeSel = v),
+                            validator: (v) =>
+                                v == null ? 'Required' : null,
+                          )
+                        : TextFormField(
+                            controller: tradeFree,
+                            decoration: const InputDecoration(
+                              labelText: 'Trade needed',
+                              prefixIcon: Icon(Icons.handyman_outlined),
+                            ),
+                            validator: (v) => (v ?? '').trim().isEmpty
+                                ? 'Required'
+                                : null,
+                          ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: TextFormField(
-                      controller: city,
-                      decoration: const InputDecoration(
-                        labelText: 'City',
-                        prefixIcon: Icon(Icons.location_city_outlined),
-                      ),
-                    ),
+                    child: cityOptions.isNotEmpty
+                        ? DropdownButtonFormField<String>(
+                            initialValue:
+                                cityOptions.contains(citySel) ? citySel : null,
+                            decoration: const InputDecoration(
+                              labelText: 'City',
+                              prefixIcon: Icon(
+                                Icons.location_city_outlined,
+                              ),
+                            ),
+                            items: [
+                              for (final c in cityOptions)
+                                DropdownMenuItem(value: c, child: Text(c)),
+                            ],
+                            onChanged: (v) => setState(() => citySel = v),
+                          )
+                        : TextFormField(
+                            controller: cityFree,
+                            decoration: const InputDecoration(
+                              labelText: 'City',
+                              prefixIcon: Icon(
+                                Icons.location_city_outlined,
+                              ),
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -1843,32 +2519,53 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                           onPressed: () => _action('cancel'),
                           child: const Text('Cancel'),
                         ),
+                      if (!isCraft && st == 'completed')
+                        FilledButton.tonalIcon(
+                          icon: const Icon(Icons.star_outline),
+                          label: const Text('Rate craftsman'),
+                          onPressed: () async {
+                            final done = await showDialog<bool>(
+                              context: context,
+                              builder: (_) => ReviewDialog(
+                                api: widget.api,
+                                jobId: widget.jobId,
+                              ),
+                            );
+                            if (done == true) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Thanks for the review! ⭐'),
+                                ),
+                              );
+                            }
+                          },
+                        ),
                     ],
                   ),
                 ],
               ),
             ),
           ),
-          const Divider(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                Text(
-                  chatOpen
-                      ? 'Chat (updates every 5s)'
-                      : 'Chat opens after a craftsman accepts',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ],
+          // Chat exists only after client + craftsman agree (accepted).
+          // Before that, no chat UI at all — not even a locked box.
+          if (chatOpen) ...[
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  Text(
+                    'Chat (updates every 5s)',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: !chatOpen
-                ? const Center(child: Text('🔒 No chat yet.'))
-                : messages.isEmpty
-                ? const Center(child: Text('Say salam! 👋'))
-                : ListView.builder(
+            Expanded(
+              child: messages.isEmpty
+                  ? const Center(child: Text('Say salam! 👋'))
+                  : ListView.builder(
                     itemCount: messages.length,
                     itemBuilder: (_, i) {
                       final m = messages[i] as Map<String, dynamic>;
@@ -1938,9 +2635,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                       );
                     },
                   ),
-          ),
-          if (chatOpen)
-            Padding(
+            ),
+          Padding(
               padding: const EdgeInsets.all(8),
               child: Row(
                 children: [
@@ -1980,6 +2676,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                 ],
               ),
             ),
+          ],
         ],
       ),
     );
@@ -1987,8 +2684,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
 }
 
 class AccountTab extends StatelessWidget {
-  const AccountTab({super.key, required this.session});
+  const AccountTab({super.key, required this.session, required this.api});
   final Session session;
+  final ApiClient api;
   @override
   Widget build(BuildContext context) {
     final u = session.user ?? {};
@@ -2059,6 +2757,23 @@ class AccountTab extends StatelessWidget {
           child: Column(
             children: [
               ListTile(
+                leading: const Icon(Icons.edit_outlined, color: kTeal),
+                title: const Text('Edit profile'),
+                subtitle: const Text('Name, phone, trade, city, bio'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProfileEditScreen(
+                        session: session,
+                        api: api,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.work_outline, color: kTeal),
                 title: const Text('My jobs'),
                 subtitle: Text(
@@ -2096,6 +2811,716 @@ class AccountTab extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ---------- Craftsman profile ----------
+
+class CraftsmanProfileScreen extends StatefulWidget {
+  const CraftsmanProfileScreen({
+    super.key,
+    required this.api,
+    required this.userId,
+  });
+  final ApiClient api;
+  final int userId;
+  @override
+  State<CraftsmanProfileScreen> createState() => _CraftsmanProfileScreenState();
+}
+
+class _CraftsmanProfileScreenState extends State<CraftsmanProfileScreen> {
+  Map<String, dynamic>? data;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final d = await widget.api.craftsmanProfile(widget.userId);
+      if (!mounted) return;
+      setState(() {
+        data = d;
+        error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(
+        () => error = e is ApiException ? e.message : 'Could not load: $e',
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (data == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(
+          child: error != null
+              ? ErrorRetry(message: error!, onRetry: _load)
+              : const CircularProgressIndicator(),
+        ),
+      );
+    }
+    final c = (data!['craftsman'] as Map?) ?? {};
+    final reviews = ((data!['reviews'] as Map?) ?? {})['data'] as List? ?? [];
+    final rating = ((c['rating_avg'] as num?)?.toDouble() ?? 0);
+    final count = ((c['rating_count'] as num?)?.toInt() ?? 0);
+    return Scaffold(
+      appBar: AppBar(title: Text((c['name'] ?? 'Craftsman') as String)),
+      body: ListView(
+        padding: const EdgeInsets.all(14),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  InitialAvatar(
+                    name: (c['name'] ?? '?') as String,
+                    radius: 30,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          c['name'] ?? '',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if ((c['city'] ?? '') != '')
+                          Text(
+                            c['city'],
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            RatingStars(value: rating),
+                            Text(
+                              count > 0
+                                  ? ' $rating ($count reviews)'
+                                  : ' No reviews yet',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if ((c['trade'] ?? '') != '')
+                    TradeChip(trade: c['trade'] as String),
+                ],
+              ),
+            ),
+          ),
+          if ((c['bio'] ?? '') != '')
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Text(c['bio']),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Reviews ($count)',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          if (reviews.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(14),
+                child: Text('No reviews yet — be the first after a job!'),
+              ),
+            ),
+          for (final r in reviews)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        RatingStars(
+                          value: ((r as Map)['rating'] as num).toDouble(),
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          ((((r)['reviewer'] as Map?) ?? {})['name'] ?? ''),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (((r)['comment'] ?? '') != '')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(r['comment']),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------- Review dialog ----------
+
+class ReviewDialog extends StatefulWidget {
+  const ReviewDialog({super.key, required this.api, required this.jobId});
+  final ApiClient api;
+  final int jobId;
+  @override
+  State<ReviewDialog> createState() => _ReviewDialogState();
+}
+
+class _ReviewDialogState extends State<ReviewDialog> {
+  int rating = 5;
+  final comment = TextEditingController();
+  String? error;
+  bool busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Rate this craftsman'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 1; i <= 5; i++)
+                IconButton(
+                  icon: Icon(
+                    i <= rating ? Icons.star : Icons.star_border,
+                    color: Colors.amber.shade700,
+                    size: 32,
+                  ),
+                  onPressed: () => setState(() => rating = i),
+                ),
+            ],
+          ),
+          TextField(
+            controller: comment,
+            decoration: const InputDecoration(
+              hintText: 'What went well? (optional)',
+            ),
+            maxLines: 3,
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                error!,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: busy ? null : () => Navigator.pop(context, false),
+          child: const Text('Later'),
+        ),
+        FilledButton(
+          onPressed: busy
+              ? null
+              : () async {
+                  setState(() {
+                    busy = true;
+                    error = null;
+                  });
+                  try {
+                    await widget.api.createReview(
+                      widget.jobId,
+                      rating,
+                      comment.text.trim().isEmpty
+                          ? null
+                          : comment.text.trim(),
+                    );
+                    if (context.mounted) Navigator.pop(context, true);
+                  } catch (e) {
+                    if (!mounted) return;
+                    setState(
+                      () => error = e is ApiException ? e.message : '$e',
+                    );
+                  } finally {
+                    if (mounted) setState(() => busy = false);
+                  }
+                },
+          child: const Text('Send review'),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------- Notifications ----------
+
+class NotificationsTab extends StatefulWidget {
+  const NotificationsTab({
+    super.key,
+    required this.api,
+    required this.session,
+    required this.onRead,
+  });
+  final ApiClient api;
+  final Session session;
+  final VoidCallback onRead;
+  @override
+  State<NotificationsTab> createState() => _NotificationsTabState();
+}
+
+class _NotificationsTabState extends State<NotificationsTab> {
+  List<dynamic> items = [];
+  bool loading = true;
+  String? error;
+
+  static const _icons = {
+    'job.accepted': Icons.handshake_outlined,
+    'job.completed': Icons.check_circle_outline,
+    'message.received': Icons.chat_bubble_outline,
+    'review.received': Icons.star_outline,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final n = await widget.api.notifications();
+      if (!mounted) return;
+      setState(() => items = _pageItems(n));
+    } catch (e) {
+      if (!mounted) return;
+      setState(
+        () => error = e is ApiException ? e.message : 'Could not load: $e',
+      );
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> _markAllRead() async {
+    try {
+      await widget.api.markNotificationsRead();
+      widget.onRead();
+      _load();
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: Row(
+            children: [
+              const Text(
+                'Alerts',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                icon: const Icon(Icons.done_all, size: 18),
+                label: const Text('Mark all read'),
+                onPressed: _markAllRead,
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: _load,
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: loading
+              ? const Center(child: CircularProgressIndicator())
+              : error != null
+              ? ErrorRetry(message: error!, onRetry: _load)
+              : items.isEmpty
+              ? const Center(
+                  child: Text('Nothing yet — accepts and messages land here.'),
+                )
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView.builder(
+                    itemCount: items.length,
+                    itemBuilder: (_, i) {
+                      final n = items[i] as Map<String, dynamic>;
+                      final unread = n['read_at'] == null;
+                      final jobId =
+                          ((n['data'] as Map?) ?? {})['job_id'] as num?;
+                      return Card(
+                        color: unread ? Colors.teal.shade50 : null,
+                        child: ListTile(
+                          leading: Icon(
+                            _icons[(n['type'] ?? '') as String] ??
+                                Icons.notifications_outlined,
+                            color: kTeal,
+                          ),
+                          title: Text(
+                            n['title'] ?? '',
+                            style: TextStyle(
+                              fontWeight: unread
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${n['body'] ?? ''}\n${shortTime(n['created_at'] as String?)}',
+                          ),
+                          isThreeLine: true,
+                          trailing: unread
+                              ? Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: const BoxDecoration(
+                                    color: kTeal,
+                                    shape: BoxShape.circle,
+                                  ),
+                                )
+                              : null,
+                          onTap: () async {
+                            // Job-related alerts jump straight to the job.
+                            if (jobId != null) {
+                              try {
+                                await widget.api.markNotificationsRead([
+                                  (n['id'] as num).toInt(),
+                                ]);
+                              } catch (_) {}
+                              widget.onRead();
+                              if (!context.mounted) return;
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => JobDetailScreen(
+                                    api: widget.api,
+                                    session: widget.session,
+                                    jobId: jobId.toInt(),
+                                  ),
+                                ),
+                              );
+                              _load();
+                            }
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------- Profile edit ----------
+
+class ProfileEditScreen extends StatefulWidget {
+  const ProfileEditScreen({super.key, required this.session, required this.api});
+  final Session session;
+  final ApiClient api;
+  @override
+  State<ProfileEditScreen> createState() => _ProfileEditScreenState();
+}
+
+class _ProfileEditScreenState extends State<ProfileEditScreen> {
+  final formKey = GlobalKey<FormState>();
+  late final name = TextEditingController(text: widget.session.user?['name']);
+  late final phone = TextEditingController(
+    text: widget.session.user?['phone'],
+  );
+  late final city = TextEditingController(text: widget.session.user?['city']);
+  late final bio = TextEditingController(text: widget.session.user?['bio']);
+  String? trade;
+  String? error;
+  bool busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    trade = widget.session.user?['trade'] as String?;
+  }
+
+  Future<void> _save() async {
+    if (!(formKey.currentState?.validate() ?? false)) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final updated = await widget.api.updateProfile({
+        'name': name.text.trim(),
+        if (phone.text.trim().isNotEmpty) 'phone': phone.text.trim(),
+        if (city.text.trim().isNotEmpty) 'city': city.text.trim(),
+        if (bio.text.trim().isNotEmpty) 'bio': bio.text.trim(),
+        if (widget.session.isCraftsman && (trade ?? '').isNotEmpty)
+          'trade': trade,
+      });
+      widget.session.updateUser(updated);
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => error = e is ApiException ? e.message : '$e');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tradeOptions = [
+      ...MetaCache.trades.map((t) => (t['slug'] ?? '') as String),
+      if (trade != null &&
+          !MetaCache.trades.any((t) => t['slug'] == trade))
+        trade!,
+    ];
+    return Scaffold(
+      appBar: AppBar(title: const Text('Edit profile')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: name,
+                decoration: const InputDecoration(labelText: 'Full name'),
+                validator: (v) =>
+                    (v ?? '').trim().isEmpty ? 'Name is required' : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: phone,
+                decoration: const InputDecoration(
+                  labelText: 'Phone (optional)',
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 10),
+              if (widget.session.isCraftsman)
+                DropdownButtonFormField<String>(
+                  initialValue: tradeOptions.contains(trade) ? trade : null,
+                  decoration: const InputDecoration(labelText: 'Trade'),
+                  items: [
+                    for (final s in tradeOptions)
+                      DropdownMenuItem(value: s, child: Text(MetaCache.label(s))),
+                  ],
+                  onChanged: (v) => setState(() => trade = v),
+                )
+              else
+                TextFormField(
+                  controller: city,
+                  decoration: const InputDecoration(labelText: 'City'),
+                ),
+              if (widget.session.isCraftsman) ...[
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: city,
+                  decoration: const InputDecoration(labelText: 'City'),
+                ),
+              ],
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: bio,
+                decoration: const InputDecoration(
+                  labelText: 'Bio (optional)',
+                  alignLabelWithHint: true,
+                ),
+                maxLines: 3,
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 12),
+                Text(error!, style: const TextStyle(color: Colors.red)),
+              ],
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: busy ? null : _save,
+                child: busy
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Save'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------- Forgot password ----------
+
+class ForgotPasswordScreen extends StatefulWidget {
+  const ForgotPasswordScreen({super.key, required this.api});
+  final ApiClient api;
+  @override
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+}
+
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+  int step = 0; // 0 = email, 1 = code + new password
+  final email = TextEditingController();
+  final code = TextEditingController();
+  final password = TextEditingController();
+  String? info;
+  String? error;
+  bool busy = false;
+
+  Future<void> _send() async {
+    if (email.text.trim().isEmpty || !email.text.contains('@')) {
+      setState(() => error = 'Enter a valid email');
+      return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+      info = null;
+    });
+    try {
+      final r = await widget.api.forgotPassword(email.text.trim());
+      if (!mounted) return;
+      setState(() {
+        busy = false;
+        step = 1;
+        // v1 backend returns the code (no mail wired yet).
+        info = r['code'] != null
+            ? 'Code: ${r['code']} (enter it below)'
+            : 'If this email exists, a code was sent.';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        busy = false;
+        error = e is ApiException ? e.message : '$e';
+      });
+    }
+  }
+
+  Future<void> _reset() async {
+    if (code.text.trim().length != 6) {
+      setState(() => error = 'The code has 6 digits');
+      return;
+    }
+    if (password.text.length < 8) {
+      setState(() => error = 'Password needs 8+ characters');
+      return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await widget.api.resetPassword(
+        email.text.trim(),
+        code.text.trim(),
+        password.text,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password changed — login now.')),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        busy = false;
+        error = e is ApiException ? e.message : '$e';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Reset password')),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (step == 0) ...[
+              const Text('Enter your account email to get a reset code.'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: email,
+                decoration: const InputDecoration(labelText: 'Email'),
+                keyboardType: TextInputType.emailAddress,
+              ),
+            ] else ...[
+              if (info != null)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(info!),
+                ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: code,
+                decoration: const InputDecoration(
+                  labelText: '6-digit code',
+                ),
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+              ),
+              TextField(
+                controller: password,
+                decoration: const InputDecoration(
+                  labelText: 'New password (8+ chars)',
+                ),
+                obscureText: true,
+              ),
+            ],
+            if (error != null) ...[
+              const SizedBox(height: 8),
+              Text(error!, style: const TextStyle(color: Colors.red)),
+            ],
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: busy ? null : (step == 0 ? _send : _reset),
+              child: Text(step == 0 ? 'Send code' : 'Change password'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

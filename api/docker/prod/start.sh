@@ -7,6 +7,8 @@ if [ -z "$APP_KEY" ]; then
   exit 1
 fi
 
+php artisan storage:link || true
+
 # Bake config with the runtime env (caches are rebuilt on every start,
 # so env changes apply after a container restart, not a rebuild).
 php artisan config:cache

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AppNotification;
 use App\Models\Job;
 use App\Models\Message;
 use Illuminate\Http\JsonResponse;
@@ -39,6 +40,18 @@ class MessageController extends Controller
             'body' => $data['body'],
         ]);
         $msg->load('sender:id,name');
+
+        $otherId = $request->user()->id === (int) $job->user_id
+            ? (int) $job->accepted_user_id
+            : (int) $job->user_id;
+        if ($otherId) {
+            AppNotification::notify(
+                $otherId, 'message.received',
+                "New message from {$request->user()->name}",
+                mb_substr($data['body'], 0, 120),
+                ['job_id' => $job->id],
+            );
+        }
 
         return response()->json($msg, 201);
     }

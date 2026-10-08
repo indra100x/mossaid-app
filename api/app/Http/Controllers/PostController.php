@@ -12,7 +12,7 @@ class PostController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $q = Post::with('user:id,name,trade,city')->withCount(['likes', 'comments'])->orderByDesc('id');
+        $q = Post::with('user:id,name,trade,city,rating_avg,rating_count')->withCount(['likes', 'comments'])->orderByDesc('id');
 
         if ($trade = $request->query('trade')) {
             $q->where('trade', $trade);
@@ -25,6 +25,9 @@ class PostController extends Controller
                 $w->where('title', 'ilike', "%{$search}%")
                     ->orWhere('description', 'ilike', "%{$search}%");
             });
+        }
+        if ($request->boolean('mine')) {
+            $q->where('user_id', $request->user()->id);
         }
 
         return response()->json($q->paginate(20));
