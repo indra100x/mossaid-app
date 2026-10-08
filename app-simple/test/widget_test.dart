@@ -26,7 +26,7 @@ void main() {
     expect(find.text('Mossaid'), findsOneWidget);
     expect(find.text('Login'), findsOneWidget);
     expect(find.text('Create account'), findsOneWidget);
-    expect(find.textContaining('1.0.8'), findsOneWidget);
+    expect(find.textContaining('1.0.9'), findsOneWidget);
 
     // Tapping login opens the auth screen in login mode.
     await tester.tap(find.text('Login'));

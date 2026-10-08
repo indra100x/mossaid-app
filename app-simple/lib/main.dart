@@ -1361,7 +1361,12 @@ class _PostsTabState extends State<PostsTab> {
                         tradeIcon((t['icon'] ?? '') as String),
                         size: 16,
                       ),
-                      label: Text((t['label'] ?? '') as String),
+                      label: Text(
+                        MetaCache.label(
+                          (t['slug'] ?? '') as String,
+                          ar: Strings.isAr(context),
+                        ),
+                      ),
                       selected: trade == t['slug'],
                       onSelected: (_) => setState(() {
                         trade = t['slug'] as String;
