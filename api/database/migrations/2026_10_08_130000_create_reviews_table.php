@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('reviews', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('job_id')->constrained('job_requests')->cascadeOnDelete();
-            $table->foreignId('reviewer_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('craftsman_id')->constrained('users')->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('job_id')->constrained('job_requests')->cascadeOnDelete();
+            $table->foreignUuid('reviewer_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignUuid('craftsman_id')->constrained('users')->cascadeOnDelete();
             $table->unsignedTinyInteger('rating');
             $table->text('comment')->nullable();
             $table->timestamps();

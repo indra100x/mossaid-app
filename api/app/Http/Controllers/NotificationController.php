@@ -23,7 +23,7 @@ class NotificationController extends Controller
     {
         $data = $request->validate([
             'ids' => ['nullable', 'array'],
-            'ids.*' => ['integer'],
+            'ids.*' => ['string'],
         ]);
 
         $q = AppNotification::where('user_id', $request->user()->id)

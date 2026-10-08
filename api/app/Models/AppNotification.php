@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class AppNotification extends Model
 {
+    use HasUuids;
+
     protected $table = 'notifications';
 
     protected $fillable = [
@@ -18,7 +21,7 @@ class AppNotification extends Model
     }
 
     public static function notify(
-        int $userId,
+        string $userId,
         string $type,
         string $title,
         ?string $body = null,

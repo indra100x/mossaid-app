@@ -1451,7 +1451,7 @@ class _PostsTabState extends State<PostsTab> {
                             MaterialPageRoute(
                               builder: (_) => PostDetailScreen(
                                 api: widget.api,
-                                postId: (p['id'] as num).toInt(),
+                                postId: '${p['id']}',
                               ),
                             ),
                           );
@@ -1798,7 +1798,7 @@ class _PostFormScreenState extends State<PostFormScreen> {
 class PostDetailScreen extends StatefulWidget {
   const PostDetailScreen({super.key, required this.api, required this.postId});
   final ApiClient api;
-  final int postId;
+  final String postId;
   @override
   State<PostDetailScreen> createState() => _PostDetailScreenState();
 }
@@ -1887,7 +1887,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () {
-              final id = (u['id'] as num?)?.toInt();
+              final id = u['id']?.toString();
               if (id != null) {
                 Navigator.push(
                   context,
@@ -2233,7 +2233,7 @@ class _JobsTabState extends State<JobsTab> {
                                 builder: (_) => JobDetailScreen(
                                   api: widget.api,
                                   session: widget.session,
-                                  jobId: (j['id'] as num).toInt(),
+                                  jobId: '${j['id']}',
                                 ),
                               ),
                             );
@@ -2636,7 +2636,7 @@ class JobDetailScreen extends StatefulWidget {
   });
   final ApiClient api;
   final Session session;
-  final int jobId;
+  final String jobId;
   @override
   State<JobDetailScreen> createState() => _JobDetailScreenState();
 }
@@ -2682,12 +2682,12 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
 
   Future<void> _poll() async {
     try {
-      final lastId = messages.isEmpty
+      final lastTime = messages.isEmpty
           ? null
-          : (messages.last['id'] as num).toInt();
-      final fresh = await widget.api.messages(widget.jobId, afterId: lastId);
+          : messages.last['created_at'] as String?;
+      final fresh = await widget.api.messages(widget.jobId, after: lastTime);
       if (fresh.isNotEmpty) setState(() => messages = [...messages, ...fresh]);
-      if (lastId == null) {
+      if (lastTime == null) {
         final all = await widget.api.messages(widget.jobId);
         setState(() => messages = all);
       }
@@ -2876,8 +2876,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                       itemBuilder: (_, i) {
                         final m = messages[i] as Map<String, dynamic>;
                         final mine =
-                            (m['sender_id'] as num).toInt().toString() ==
-                            widget.session.user?['id'].toString();
+                            '${m['sender_id']}' ==
+                            '${widget.session.user?['id']}';
                         final sender = (m['sender'] as Map?) ?? {};
                         return Align(
                           alignment: mine
@@ -3210,7 +3210,7 @@ class CraftsmanProfileScreen extends StatefulWidget {
     required this.userId,
   });
   final ApiClient api;
-  final int userId;
+  final String userId;
   @override
   State<CraftsmanProfileScreen> createState() => _CraftsmanProfileScreenState();
 }
@@ -3378,7 +3378,7 @@ class _CraftsmanProfileScreenState extends State<CraftsmanProfileScreen> {
 class ReviewDialog extends StatefulWidget {
   const ReviewDialog({super.key, required this.api, required this.jobId});
   final ApiClient api;
-  final int jobId;
+  final String jobId;
   @override
   State<ReviewDialog> createState() => _ReviewDialogState();
 }
@@ -3601,7 +3601,7 @@ class _NotificationsTabState extends State<NotificationsTab> {
                       final n = items[i] as Map<String, dynamic>;
                       final unread = n['read_at'] == null;
                       final payload = (n['data'] as Map?) ?? const {};
-                      final jobId = payload['job_id'] as num?;
+                      final jobId = payload['job_id']?.toString();
                       final text = _notifText(
                         context,
                         (n['type'] ?? '') as String,
@@ -3646,7 +3646,7 @@ class _NotificationsTabState extends State<NotificationsTab> {
                             if (jobId != null) {
                               try {
                                 await widget.api.markNotificationsRead([
-                                  (n['id'] as num).toInt(),
+                                  '${n['id']}',
                                 ]);
                               } catch (_) {}
                               widget.onRead();
@@ -3657,7 +3657,7 @@ class _NotificationsTabState extends State<NotificationsTab> {
                                   builder: (_) => JobDetailScreen(
                                     api: widget.api,
                                     session: widget.session,
-                                    jobId: jobId.toInt(),
+                                    jobId: jobId,
                                   ),
                                 ),
                               );
@@ -3998,7 +3998,7 @@ class PostCard extends StatelessWidget {
   final ApiClient api;
   final Map<String, dynamic> post;
   final VoidCallback onOpen;
-  final ValueChanged<int> onProfile;
+  final ValueChanged<String> onProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -4164,7 +4164,7 @@ class PostCard extends StatelessWidget {
                     children: [
                       InkWell(
                         onTap: () {
-                          final id = (u['id'] as num?)?.toInt();
+                          final id = u['id']?.toString();
                           if (id != null) onProfile(id);
                         },
                         child: InitialAvatar(

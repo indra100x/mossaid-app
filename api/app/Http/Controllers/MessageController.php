@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 
 class MessageController extends Controller
 {
-    private function ensureChatAllowed(Job $job, int $userId): void
+    private function ensureChatAllowed(Job $job, string $userId): void
     {
         abort_unless($job->chatOpen(), 403, 'Chat opens only after a craftsman accepts the job.');
         abort_unless($job->isParticipant($userId), 403, 'Not a participant of this job.');
@@ -18,19 +18,23 @@ class MessageController extends Controller
 
     public function index(Request $request, Job $job): JsonResponse
     {
-        $this->ensureChatAllowed($job, $request->user()->id);
+        $this->ensureChatAllowed($job, (string) $request->user()->id);
 
         $q = $job->messages()->with('sender:id,name');
-        if ($after = $request->query('after_id')) {
-            $q->where('id', '>', (int) $after);
+        if ($after = $request->query('after')) {
+            try {
+                $q->where('created_at', '>', new \DateTime($after));
+            } catch (\Exception) {
+                abort(422, 'Invalid after cursor.');
+            }
         }
 
-        return response()->json($q->orderBy('id')->paginate(50));
+        return response()->json($q->orderBy('created_at')->paginate(50));
     }
 
     public function store(Request $request, Job $job): JsonResponse
     {
-        $this->ensureChatAllowed($job, $request->user()->id);
+        $this->ensureChatAllowed($job, (string) $request->user()->id);
 
         $data = $request->validate(['body' => ['required', 'string', 'max:2000']]);
 
@@ -41,9 +45,10 @@ class MessageController extends Controller
         ]);
         $msg->load('sender:id,name');
 
-        $otherId = $request->user()->id === (int) $job->user_id
-            ? (int) $job->accepted_user_id
-            : (int) $job->user_id;
+        $mine = (string) $request->user()->id;
+        $otherId = $mine === (string) $job->user_id
+            ? (string) $job->accepted_user_id
+            : (string) $job->user_id;
         if ($otherId) {
             AppNotification::notify(
                 $otherId, 'message.received',

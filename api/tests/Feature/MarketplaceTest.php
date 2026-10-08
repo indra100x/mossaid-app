@@ -87,8 +87,12 @@ class MarketplaceTest extends TestCase
             'body' => 'Salam, quand pouvez-vous passer ?',
         ])->assertCreated()->json();
 
-        $this->as($craftToken)->getJson("/api/jobs/{$job['id']}/messages?after_id=0")
+        $this->as($craftToken)->getJson("/api/jobs/{$job['id']}/messages?after=2000-01-01T00:00:00Z")
             ->assertOk()->assertJsonPath('data.0.id', $msg['id']);
+        // Newer-than cursor excludes what we already have.
+        $this->as($craftToken)->getJson(
+            "/api/jobs/{$job['id']}/messages?after={$msg['created_at']}"
+        )->assertOk()->assertJsonCount(0, 'data');
 
         $this->as($craftToken)->postJson("/api/jobs/{$job['id']}/messages", [
             'body' => 'Demain inchallah.',

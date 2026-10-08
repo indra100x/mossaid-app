@@ -12,7 +12,7 @@ class JobController extends Controller
     public function index(Request $request): JsonResponse
     {
         $q = Job::with(['client:id,name,city', 'acceptedCraftsman:id,name,trade'])
-            ->orderByDesc('id');
+            ->orderByDesc('created_at');
 
         foreach (['trade', 'city', 'status'] as $f) {
             if ($v = $request->query($f)) {

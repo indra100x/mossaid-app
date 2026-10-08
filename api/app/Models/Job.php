@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Job extends Model
 {
+    use HasUuids;
+
     protected $table = 'job_requests';
 
     protected $fillable = [
@@ -32,7 +35,7 @@ class Job extends Model
 
     public function messages(): HasMany
     {
-        return $this->hasMany(Message::class)->orderBy('id');
+        return $this->hasMany(Message::class)->orderBy('created_at');
     }
 
     public function chatOpen(): bool
@@ -40,8 +43,8 @@ class Job extends Model
         return in_array($this->status, ['accepted', 'completed'], true);
     }
 
-    public function isParticipant(int $userId): bool
+    public function isParticipant(string $userId): bool
     {
-        return $userId === (int) $this->user_id || $userId === (int) $this->accepted_user_id;
+        return $userId === (string) $this->user_id || $userId === (string) $this->accepted_user_id;
     }
 }

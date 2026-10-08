@@ -95,7 +95,7 @@ class ApiClient {
     return _decode(http.get(uri, headers: _headers), 200);
   }
 
-  Future<Map<String, dynamic>> postDetail(int id) async {
+  Future<Map<String, dynamic>> postDetail(String id) async {
     return _decode(
       http.get(Uri.parse('$baseUrl/posts/$id'), headers: _headers),
       200,
@@ -113,14 +113,14 @@ class ApiClient {
     );
   }
 
-  Future<Map<String, dynamic>> toggleLike(int id) async {
+  Future<Map<String, dynamic>> toggleLike(String id) async {
     return _decode(
       http.post(Uri.parse('$baseUrl/posts/$id/like'), headers: _headers),
       200,
     );
   }
 
-  Future<List<dynamic>> comments(int id) async {
+  Future<List<dynamic>> comments(String id) async {
     final req = http.get(
       Uri.parse('$baseUrl/posts/$id/comments'),
       headers: _headers,
@@ -129,7 +129,7 @@ class ApiClient {
     return (body['data'] as List?) ?? (body as List<dynamic>);
   }
 
-  Future<Map<String, dynamic>> addComment(int id, String text) async {
+  Future<Map<String, dynamic>> addComment(String id, String text) async {
     return _decode(
       http.post(
         Uri.parse('$baseUrl/posts/$id/comments'),
@@ -168,23 +168,23 @@ class ApiClient {
     );
   }
 
-  Future<Map<String, dynamic>> jobAction(int id, String action) async {
+  Future<Map<String, dynamic>> jobAction(String id, String action) async {
     return _decode(
       http.post(Uri.parse('$baseUrl/jobs/$id/$action'), headers: _headers),
       200,
     );
   }
 
-  Future<List<dynamic>> messages(int jobId, {int? afterId}) async {
+  Future<List<dynamic>> messages(String jobId, {String? after}) async {
     final uri = Uri.parse(
       '$baseUrl/jobs/$jobId/messages',
-    ).replace(queryParameters: {if (afterId != null) 'after_id': '$afterId'});
+    ).replace(queryParameters: {if (after != null) 'after': after});
     final req = http.get(uri, headers: _headers);
     final body = await _decode(req, 200);
     return (body['data'] as List?) ?? [];
   }
 
-  Future<Map<String, dynamic>> sendMessage(int jobId, String text) async {
+  Future<Map<String, dynamic>> sendMessage(String jobId, String text) async {
     return _decode(
       http.post(
         Uri.parse('$baseUrl/jobs/$jobId/messages'),
@@ -195,7 +195,7 @@ class ApiClient {
     );
   }
 
-  Future<Map<String, dynamic>> jobShow(int id) async {
+  Future<Map<String, dynamic>> jobShow(String id) async {
     return _decode(
       http.get(Uri.parse('$baseUrl/jobs/$id'), headers: _headers),
       200,
@@ -234,7 +234,7 @@ class ApiClient {
     return url;
   }
 
-  Future<Map<String, dynamic>> craftsmanProfile(int userId) async {
+  Future<Map<String, dynamic>> craftsmanProfile(String userId) async {
     return _decode(
       http.get(Uri.parse('$baseUrl/craftsmen/$userId'), headers: _headers),
       200,
@@ -242,7 +242,7 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> createReview(
-    int jobId,
+    String jobId,
     int rating,
     String? comment,
   ) async {
@@ -266,7 +266,7 @@ class ApiClient {
     );
   }
 
-  Future<Map<String, dynamic>> markNotificationsRead([List<int>? ids]) async {
+  Future<Map<String, dynamic>> markNotificationsRead([List<String>? ids]) async {
     return _decode(
       http.post(
         Uri.parse('$baseUrl/notifications/read'),

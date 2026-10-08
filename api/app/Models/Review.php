@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Review extends Model
 {
+    use HasUuids;
+
     protected $fillable = [
         'job_id', 'reviewer_id', 'craftsman_id', 'rating', 'comment',
     ];

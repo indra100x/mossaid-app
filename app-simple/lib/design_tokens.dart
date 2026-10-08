@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Update this when releasing a new APK so we can tell builds apart.
-const String kAppVersion = '1.0.10 (build 11)';
+const String kAppVersion = '1.0.11 (build 12)';
 
 const Color kTeal = Color(0xFF0F766E);
 const Color kTealDeep = Color(0xFF0B4F48);

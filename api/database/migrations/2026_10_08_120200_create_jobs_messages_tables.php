@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('job_requests', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete(); // client
-            $table->foreignId('craftsman_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('accepted_user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('user_id')->constrained()->cascadeOnDelete(); // client
+            $table->foreignUuid('craftsman_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUuid('accepted_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('title', 150);
             $table->text('description');
             $table->string('trade', 60)->index();
@@ -23,9 +23,9 @@ return new class extends Migration
         });
 
         Schema::create('messages', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('job_id')->constrained('job_requests')->cascadeOnDelete();
-            $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('job_id')->constrained('job_requests')->cascadeOnDelete();
+            $table->foreignUuid('sender_id')->constrained('users')->cascadeOnDelete();
             $table->text('body');
             $table->timestamps();
             $table->index(['job_id', 'id']);
