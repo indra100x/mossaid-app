@@ -277,9 +277,7 @@ class ApiClient {
     );
   }
 
-  Future<Map<String, dynamic>> updateProfile(
-    Map<String, dynamic> data,
-  ) async {
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {
     return _decode(
       http.patch(
         Uri.parse('$baseUrl/auth/profile'),

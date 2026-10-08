@@ -4,24 +4,29 @@ import 'package:mossaid_simple/api.dart';
 import 'package:mossaid_simple/app_theme.dart';
 import 'package:mossaid_simple/main.dart';
 import 'package:mossaid_simple/session.dart';
+import 'package:mossaid_simple/strings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('Landing shows logo, login/register and version',
-      (tester) async {
+  testWidgets('Landing shows logo, login/register and version', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final api = ApiClient(baseUrl: 'http://localhost:8000/api');
     final session = Session(api)..loaded = true; // skip async token restore
     final theme = AppTheme();
     await tester.pumpWidget(
-      MossaidSimple(session: session, api: api, theme: theme),
+      MossaidSimple(
+        session: session,
+        api: api,
+        theme: theme,
+        locale: AppLocale(),
+      ),
     );
     await tester.pump();
 
     expect(find.text('Mossaid'), findsOneWidget);
     expect(find.text('Login'), findsOneWidget);
     expect(find.text('Create account'), findsOneWidget);
-    expect(find.textContaining('1.0.6'), findsOneWidget);
+    expect(find.textContaining('1.0.7'), findsOneWidget);
 
     // Tapping login opens the auth screen in login mode.
     await tester.tap(find.text('Login'));
@@ -37,7 +42,12 @@ void main() {
       ..user = {'id': 1, 'name': 'Test', 'role': 'client'};
     final theme = AppTheme();
     await tester.pumpWidget(
-      MossaidSimple(session: session, api: api, theme: theme),
+      MossaidSimple(
+        session: session,
+        api: api,
+        theme: theme,
+        locale: AppLocale(),
+      ),
     );
     await tester.pump();
 
@@ -56,5 +66,38 @@ void main() {
     api.token = 'abc';
     // No exception = headers getter works with token set.
     expect(api.baseUrl, 'http://localhost:8000/api');
+  });
+
+  test('Arabic covers every English key', () {
+    final missing = [
+      for (final k in Strings.keys)
+        if (!Strings.hasAr(k)) k,
+    ];
+    expect(missing, isEmpty, reason: 'missing ar: $missing');
+  });
+
+  testWidgets('Landing renders in Arabic with RTL', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final api = ApiClient(baseUrl: 'http://localhost:8000/api');
+    final session = Session(api)..loaded = true;
+    final loc = AppLocale();
+    await loc.set('ar');
+    await tester.pumpWidget(
+      MossaidSimple(
+        session: session,
+        api: api,
+        theme: AppTheme(),
+        locale: loc,
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('تسجيل الدخول'), findsOneWidget);
+    expect(find.text('إنشاء حساب'), findsOneWidget);
+    // RTL direction applied.
+    final dir = tester.widget<Directionality>(
+      find.byWidgetPredicate((w) => w is Directionality).first,
+    );
+    expect(dir.textDirection, TextDirection.rtl);
   });
 }

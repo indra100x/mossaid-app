@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'api.dart';
 import 'app_theme.dart';
@@ -7,12 +8,17 @@ import 'design_tokens.dart';
 import 'job_timeline.dart';
 import 'meta.dart';
 import 'session.dart';
+import 'strings.dart';
+import 'strings.dart';
 
 void main() {
   final api = ApiClient();
   final session = Session(api)..load();
   final theme = AppTheme()..load();
-  runApp(MossaidSimple(session: session, api: api, theme: theme));
+  final appLocale = AppLocale()..load();
+  runApp(
+    MossaidSimple(session: session, api: api, theme: theme, locale: appLocale),
+  );
 }
 
 class MossaidSimple extends StatelessWidget {
@@ -21,15 +27,17 @@ class MossaidSimple extends StatelessWidget {
     required this.session,
     required this.api,
     required this.theme,
+    required this.locale,
   });
   final Session session;
   final ApiClient api;
   final AppTheme theme;
+  final AppLocale locale;
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: Listenable.merge([session, theme]),
+      listenable: Listenable.merge([session, theme, locale]),
       builder: (_, __) => AppThemeScope(
         theme: theme,
         child: MaterialApp(
@@ -37,13 +45,23 @@ class MossaidSimple extends StatelessWidget {
           theme: buildTheme(),
           darkTheme: buildDarkTheme(),
           themeMode: theme.mode,
+          locale: locale.locale,
+          supportedLocales: const [Locale('en'), Locale('ar')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: !session.loaded
-              ? const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                )
+              ? const Scaffold(body: Center(child: CircularProgressIndicator()))
               : session.loggedIn
-              ? HomeScreen(session: session, api: api, theme: theme)
-              : LandingScreen(session: session, api: api),
+              ? HomeScreen(
+                  session: session,
+                  api: api,
+                  theme: theme,
+                  locale: locale,
+                )
+              : LandingScreen(session: session, api: api, locale: locale),
         ),
       ),
     );
@@ -74,7 +92,9 @@ class ThemeToggleButton extends StatelessWidget {
     final theme = AppThemeScope.of(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     return IconButton(
-      tooltip: dark ? 'Light mode' : 'Dark mode',
+      tooltip: dark
+          ? Strings.t(context, 'appearance_dark')
+          : Strings.t(context, 'appearance_light'),
       color: color,
       icon: Icon(dark ? Icons.wb_sunny_outlined : Icons.dark_mode_outlined),
       onPressed: () => theme.toggle(context),
@@ -94,6 +114,7 @@ ThemeData buildTheme() {
     scaffoldBackgroundColor: kPaper,
     useMaterial3: true,
     fontFamily: 'Jakarta',
+    fontFamilyFallback: const ['Rubik'],
     textTheme: baseText.copyWith(
       titleLarge: baseText.titleLarge?.copyWith(fontWeight: FontWeight.w700),
       titleMedium: baseText.titleMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -113,10 +134,7 @@ ThemeData buildTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 15,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: Colors.grey.shade200),
@@ -138,9 +156,7 @@ ThemeData buildTheme() {
     cardTheme: CardThemeData(
       elevation: 0,
       color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       shadowColor: kInk.withValues(alpha: 0.08),
       margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
     ),
@@ -153,9 +169,7 @@ ThemeData buildTheme() {
           fontSize: 16,
           fontWeight: FontWeight.w700,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 22),
         elevation: 0,
       ),
@@ -169,9 +183,7 @@ ThemeData buildTheme() {
           fontSize: 16,
           fontWeight: FontWeight.w700,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 22),
       ),
     ),
@@ -205,14 +217,9 @@ ThemeData buildTheme() {
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
-    dividerTheme: DividerThemeData(
-      color: Colors.grey.shade200,
-      thickness: 1,
-    ),
+    dividerTheme: DividerThemeData(color: Colors.grey.shade200, thickness: 1),
   );
 }
 
@@ -236,6 +243,7 @@ ThemeData buildDarkTheme() {
     scaffoldBackgroundColor: bg,
     useMaterial3: true,
     fontFamily: 'Jakarta',
+    fontFamilyFallback: const ['Rubik'],
     textTheme: baseText.copyWith(
       titleLarge: baseText.titleLarge?.copyWith(fontWeight: FontWeight.w700),
       titleMedium: baseText.titleMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -256,10 +264,7 @@ ThemeData buildDarkTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: scheme.surfaceContainerHighest,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 15,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: scheme.outlineVariant),
@@ -277,9 +282,7 @@ ThemeData buildDarkTheme() {
     cardTheme: CardThemeData(
       elevation: 0,
       color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       shadowColor: Colors.black.withValues(alpha: 0.4),
       margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
     ),
@@ -290,9 +293,7 @@ ThemeData buildDarkTheme() {
           fontSize: 16,
           fontWeight: FontWeight.w700,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 22),
         elevation: 0,
       ),
@@ -304,9 +305,7 @@ ThemeData buildDarkTheme() {
           fontSize: 16,
           fontWeight: FontWeight.w700,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 22),
       ),
     ),
@@ -332,9 +331,7 @@ ThemeData buildDarkTheme() {
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
   );
 }
@@ -396,6 +393,7 @@ class TradeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = vivid(context, tradeColor(trade));
+    final label = MetaCache.label(trade, ar: Strings.isAr(context));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -403,7 +401,7 @@ class TradeChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        trade,
+        label,
         style: TextStyle(color: c, fontWeight: FontWeight.w600, fontSize: 12),
       ),
     );
@@ -423,6 +421,14 @@ class StatusChip extends StatelessWidget {
       'cancelled': Colors.grey,
     };
     final c = map[status] ?? Colors.grey;
+    final label = {
+      'open': 'status_open',
+      'accepted': 'status_accepted',
+      'completed': 'status_completed',
+      'cancelled': 'status_cancelled',
+      'client': 'role_client',
+      'craftsman': 'role_craftsman',
+    }[status];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -430,7 +436,7 @@ class StatusChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        status.toUpperCase(),
+        (label != null ? Strings.t(context, label) : status).toUpperCase(),
         style: TextStyle(color: c, fontWeight: FontWeight.bold, fontSize: 11),
       ),
     );
@@ -450,17 +456,13 @@ class ErrorRetry extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.cloud_off_outlined,
-              size: 48,
-              color: muted(context),
-            ),
+            Icon(Icons.cloud_off_outlined, size: 48, color: muted(context)),
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 14),
             FilledButton.icon(
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: Text(Strings.t(context, 'retry')),
               onPressed: onRetry,
             ),
           ],
@@ -564,9 +566,15 @@ class NetImage extends StatelessWidget {
 // ---------- Landing ----------
 
 class LandingScreen extends StatefulWidget {
-  const LandingScreen({super.key, required this.session, required this.api});
+  const LandingScreen({
+    super.key,
+    required this.session,
+    required this.api,
+    required this.locale,
+  });
   final Session session;
   final ApiClient api;
+  final AppLocale locale;
   @override
   State<LandingScreen> createState() => _LandingScreenState();
 }
@@ -625,12 +633,12 @@ class _LandingScreenState extends State<LandingScreen> {
                       bottom: Radius.circular(32),
                     ),
                   ),
-                  child: const SafeArea(
+                  child: SafeArea(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        LogoMark(size: 92),
-                        SizedBox(height: 12),
+                        const LogoMark(size: 92),
+                        const SizedBox(height: 12),
                         Text(
                           'Mossaid',
                           style: TextStyle(
@@ -642,7 +650,7 @@ class _LandingScreenState extends State<LandingScreen> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Trusted craftsmen, one tap away',
+                          Strings.t(context, 'tagline'),
                           style: TextStyle(
                             color: Color(0xD9FFFFFF),
                             fontSize: 15,
@@ -660,26 +668,26 @@ class _LandingScreenState extends State<LandingScreen> {
                   padding: const EdgeInsets.fromLTRB(28, 20, 28, 12),
                   child: Column(
                     children: [
-                      const Text(
-                        'Clients post jobs · Craftsmen showcase work · Chat opens after accept.',
+                      Text(
+                        Strings.t(context, 'landing_sub'),
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                       const SizedBox(height: 14),
-                      const Row(
+                      Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           _LandingPerk(
                             icon: Icons.search_outlined,
-                            label: 'Discover',
+                            label: Strings.t(context, 'perk_discover'),
                           ),
                           _LandingPerk(
                             icon: Icons.chat_bubble_outline,
-                            label: 'Chat on deal',
+                            label: Strings.t(context, 'perk_chat'),
                           ),
                           _LandingPerk(
                             icon: Icons.star_outline,
-                            label: 'Rated pros',
+                            label: Strings.t(context, 'perk_rated'),
                           ),
                         ],
                       ),
@@ -688,9 +696,9 @@ class _LandingScreenState extends State<LandingScreen> {
                         width: double.infinity,
                         child: FilledButton(
                           onPressed: () => _go(true),
-                          child: const Text(
-                            'Login',
-                            style: TextStyle(fontSize: 17),
+                          child: Text(
+                            Strings.t(context, 'login'),
+                            style: const TextStyle(fontSize: 17),
                           ),
                         ),
                       ),
@@ -699,9 +707,9 @@ class _LandingScreenState extends State<LandingScreen> {
                         width: double.infinity,
                         child: OutlinedButton(
                           onPressed: () => _go(false),
-                          child: const Text(
-                            'Create account',
-                            style: TextStyle(fontSize: 17),
+                          child: Text(
+                            Strings.t(context, 'create_account'),
+                            style: const TextStyle(fontSize: 17),
                           ),
                         ),
                       ),
@@ -728,9 +736,7 @@ class _LandingScreenState extends State<LandingScreen> {
                               )
                             else
                               Icon(
-                                serverOk == true
-                                    ? Icons.wifi
-                                    : Icons.wifi_off,
+                                serverOk == true ? Icons.wifi : Icons.wifi_off,
                                 size: 18,
                                 color: serverOk == true
                                     ? Colors.green
@@ -740,16 +746,16 @@ class _LandingScreenState extends State<LandingScreen> {
                             Flexible(
                               child: Text(
                                 checking
-                                    ? 'Checking server…'
+                                    ? Strings.t(context, 'checking_server')
                                     : serverOk == true
-                                    ? 'Server reachable ✓'
-                                    : 'Server NOT reachable — check Wi-Fi / server',
+                                    ? Strings.t(context, 'server_ok')
+                                    : Strings.t(context, 'server_down'),
                                 style: const TextStyle(fontSize: 13),
                               ),
                             ),
                             IconButton(
                               icon: const Icon(Icons.refresh, size: 18),
-                              tooltip: 'Recheck',
+                              tooltip: Strings.t(context, 'retry'),
                               onPressed: _check,
                             ),
                           ],
@@ -779,6 +785,28 @@ class _LandingScreenState extends State<LandingScreen> {
                 shape: BoxShape.circle,
               ),
               child: const ThemeToggleButton(color: Colors.white),
+            ),
+          ),
+          // Language toggle (other corner).
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 6,
+            left: 8,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: TextButton(
+                onPressed: () =>
+                    widget.locale.set(Strings.isAr(context) ? 'en' : 'ar'),
+                child: Text(
+                  Strings.isAr(context) ? 'EN' : 'عربي',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -832,8 +860,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
   String? _emailError(String? v) {
     final t = (v ?? '').trim();
-    if (t.isEmpty) return 'Email is required';
-    if (!t.contains('@') || !t.contains('.')) return 'Enter a valid email';
+    if (t.isEmpty) return Strings.t(context, 'v_email');
+    if (!t.contains('@') || !t.contains('.'))
+      return Strings.t(context, 'v_email_bad');
     return null;
   }
 
@@ -869,7 +898,11 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(isLogin ? 'Welcome back' : 'Join Mossaid'),
+        title: Text(
+          isLogin
+              ? Strings.t(context, 'welcome_back')
+              : Strings.t(context, 'join_title'),
+        ),
         actions: const [ThemeToggleButton()],
       ),
       body: Center(
@@ -886,16 +919,22 @@ class _AuthScreenState extends State<AuthScreen> {
                   const SizedBox(height: 12),
                   Text(
                     isLogin
-                        ? 'Login to find craftsmen or manage your jobs.'
-                        : 'Create your account — clients post jobs, craftsmen get discovered.',
+                        ? Strings.t(context, 'login_blurb')
+                        : Strings.t(context, 'register_blurb'),
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.grey),
                   ),
                   const SizedBox(height: 16),
                   SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(value: true, label: Text('Login')),
-                      ButtonSegment(value: false, label: Text('Register')),
+                    segments: [
+                      ButtonSegment(
+                        value: true,
+                        label: Text(Strings.t(context, 'segment_login')),
+                      ),
+                      ButtonSegment(
+                        value: false,
+                        label: Text(Strings.t(context, 'segment_register')),
+                      ),
                     ],
                     selected: {isLogin},
                     onSelectionChanged: (s) =>
@@ -905,21 +944,25 @@ class _AuthScreenState extends State<AuthScreen> {
                   if (!isLogin) ...[
                     TextFormField(
                       controller: name,
-                      decoration: const InputDecoration(
-                        labelText: 'Full name',
+                      decoration: InputDecoration(
+                        labelText: Strings.t(context, 'full_name'),
                         prefixIcon: Icon(Icons.person_outline),
                       ),
                       textInputAction: TextInputAction.next,
-                      validator: (v) =>
-                          (v ?? '').trim().isEmpty ? 'Name is required' : null,
+                      validator: (v) => (v ?? '').trim().isEmpty
+                          ? Strings.t(context, 'v_name')
+                          : null,
                     ),
                     const SizedBox(height: 10),
                     SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'client', label: Text('Client')),
+                      segments: [
+                        ButtonSegment(
+                          value: 'client',
+                          label: Text(Strings.t(context, 'role_client')),
+                        ),
                         ButtonSegment(
                           value: 'craftsman',
-                          label: Text('Craftsman'),
+                          label: Text(Strings.t(context, 'role_craftsman')),
                         ),
                       ],
                       selected: {role},
@@ -931,8 +974,8 @@ class _AuthScreenState extends State<AuthScreen> {
                         padding: const EdgeInsets.only(bottom: 10),
                         child: TextFormField(
                           controller: trade,
-                          decoration: const InputDecoration(
-                            labelText: 'Trade (painter, plumber…)',
+                          decoration: InputDecoration(
+                            labelText: Strings.t(context, 'trade_label'),
                             prefixIcon: Icon(Icons.handyman_outlined),
                           ),
                           textInputAction: TextInputAction.next,
@@ -940,8 +983,8 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     TextFormField(
                       controller: city,
-                      decoration: const InputDecoration(
-                        labelText: 'City (optional)',
+                      decoration: InputDecoration(
+                        labelText: Strings.t(context, 'city_optional'),
                         prefixIcon: Icon(Icons.location_city_outlined),
                       ),
                       textInputAction: TextInputAction.next,
@@ -950,8 +993,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   ],
                   TextFormField(
                     controller: email,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
+                    decoration: InputDecoration(
+                      labelText: Strings.t(context, 'email'),
                       prefixIcon: Icon(Icons.email_outlined),
                     ),
                     keyboardType: TextInputType.emailAddress,
@@ -963,8 +1006,8 @@ class _AuthScreenState extends State<AuthScreen> {
                     controller: password,
                     decoration: InputDecoration(
                       labelText: isLogin
-                          ? 'Password'
-                          : 'Password (min 8 chars)',
+                          ? Strings.t(context, 'password')
+                          : Strings.t(context, 'password_min'),
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -980,9 +1023,10 @@ class _AuthScreenState extends State<AuthScreen> {
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _submit(),
                     validator: (v) {
-                      if ((v ?? '').isEmpty) return 'Password is required';
+                      if ((v ?? '').isEmpty)
+                        return Strings.t(context, 'v_password');
                       if (!isLogin && v!.length < 8) {
-                        return 'At least 8 characters';
+                        return Strings.t(context, 'v_password_min');
                       }
                       return null;
                     },
@@ -1023,7 +1067,9 @@ class _AuthScreenState extends State<AuthScreen> {
                             ),
                           )
                         : Text(
-                            isLogin ? 'Login' : 'Create account',
+                            isLogin
+                                ? Strings.t(context, 'btn_login')
+                                : Strings.t(context, 'btn_create'),
                             style: const TextStyle(fontSize: 16),
                           ),
                   ),
@@ -1034,8 +1080,8 @@ class _AuthScreenState extends State<AuthScreen> {
                         : () => setState(() => isLogin = !isLogin),
                     child: Text(
                       isLogin
-                          ? "No account? Create one"
-                          : 'Already registered? Login',
+                          ? Strings.t(context, 'no_account')
+                          : Strings.t(context, 'have_account'),
                     ),
                   ),
                   if (isLogin)
@@ -1050,7 +1096,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 ),
                               ),
                             ),
-                      child: const Text('Forgot password?'),
+                      child: Text(Strings.t(context, 'forgot')),
                     ),
                 ],
               ),
@@ -1070,10 +1116,12 @@ class HomeScreen extends StatefulWidget {
     required this.session,
     required this.api,
     required this.theme,
+    required this.locale,
   });
   final Session session;
   final ApiClient api;
   final AppTheme theme;
+  final AppLocale locale;
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -1107,11 +1155,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Craftsman: My Work · Requests · Alerts · Account
     final pages = isCraft
         ? [
-            PostsTab(
-              api: widget.api,
-              isCraftsman: true,
-              onlyMine: true,
-            ),
+            PostsTab(api: widget.api, isCraftsman: true, onlyMine: true),
             JobsTab(
               api: widget.api,
               session: widget.session,
@@ -1126,6 +1170,7 @@ class _HomeScreenState extends State<HomeScreen> {
               session: widget.session,
               api: widget.api,
               theme: widget.theme,
+              locale: widget.locale,
             ),
           ]
         : [
@@ -1144,26 +1189,34 @@ class _HomeScreenState extends State<HomeScreen> {
               session: widget.session,
               api: widget.api,
               theme: widget.theme,
+              locale: widget.locale,
             ),
           ];
-    const titles = ['Discover', 'Jobs', 'Alerts', 'Account'];
-    const craftTitles = ['My work', 'Requests', 'Alerts', 'Account'];
-    final labels = isCraft ? craftTitles : titles;
+    final labels = isCraft
+        ? [
+            Strings.t(context, 'tab_mywork'),
+            Strings.t(context, 'tab_requests'),
+            Strings.t(context, 'tab_alerts'),
+            Strings.t(context, 'tab_account'),
+          ]
+        : [
+            Strings.t(context, 'tab_discover'),
+            Strings.t(context, 'tab_jobs'),
+            Strings.t(context, 'tab_alerts'),
+            Strings.t(context, 'tab_account'),
+          ];
     return Scaffold(
       appBar: AppBar(
         leadingWidth: 56,
         leading: Padding(
           padding: const EdgeInsets.only(left: 14, top: 8, bottom: 8),
-          child: InitialAvatar(
-            name: widget.session.name ?? '?',
-            radius: 20,
-          ),
+          child: InitialAvatar(name: widget.session.name ?? '?', radius: 20),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Salam, ${widget.session.name ?? ''} 👋',
+              Strings.t(context, 'salam', {'name': widget.session.name ?? ''}),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
@@ -1186,9 +1239,9 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(isCraft ? Icons.store_outlined : Icons.explore_outlined),
             label: labels[0],
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.work_outline),
-            label: 'Jobs',
+          NavigationDestination(
+            icon: const Icon(Icons.work_outline),
+            label: labels[1],
           ),
           NavigationDestination(
             icon: Badge(
@@ -1198,9 +1251,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             label: labels[2],
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            label: 'Account',
+          NavigationDestination(
+            icon: const Icon(Icons.person_outline),
+            label: labels[3],
           ),
         ],
       ),
@@ -1270,9 +1323,9 @@ class _PostsTabState extends State<PostsTab> {
               Expanded(
                 child: TextField(
                   controller: search,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     prefixIcon: Icon(Icons.search),
-                    hintText: 'Search painter, plumber…',
+                    hintText: Strings.t(context, 'search_crafts'),
                     border: OutlineInputBorder(),
                   ),
                   onSubmitted: (_) => _load(),
@@ -1292,7 +1345,7 @@ class _PostsTabState extends State<PostsTab> {
                 Padding(
                   padding: const EdgeInsets.only(right: 6, top: 8),
                   child: ChoiceChip(
-                    label: const Text('All'),
+                    label: Text(Strings.t(context, 'chip_all')),
                     selected: trade == null,
                     onSelected: (_) => setState(() {
                       trade = null;
@@ -1326,7 +1379,7 @@ class _PostsTabState extends State<PostsTab> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.add),
-                label: const Text('Publish your work'),
+                label: Text(Strings.t(context, 'publish_work')),
                 onPressed: () async {
                   final created = await Navigator.push(
                     context,
@@ -1345,11 +1398,11 @@ class _PostsTabState extends State<PostsTab> {
               : error != null
               ? ErrorRetry(message: error!, onRetry: _load)
               : items.isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
-                    padding: EdgeInsets.all(28),
+                    padding: const EdgeInsets.all(28),
                     child: Text(
-                      'No posts yet — craftsmen, publish the first one! 👆',
+                      Strings.t(context, 'no_posts'),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -1390,18 +1443,19 @@ class _PostsTabState extends State<PostsTab> {
                     },
                   ),
                 ),
-              ),
-        ],
-      );
-    }
+        ),
+      ],
+    );
   }
+}
 
-  class PostFormScreen extends StatefulWidget {
+class PostFormScreen extends StatefulWidget {
   const PostFormScreen({super.key, required this.api});
   final ApiClient api;
   @override
   State<PostFormScreen> createState() => _PostFormScreenState();
 }
+
 class _PostFormScreenState extends State<PostFormScreen> {
   final formKey = GlobalKey<FormState>();
   final title = TextEditingController();
@@ -1451,7 +1505,7 @@ class _PostFormScreenState extends State<PostFormScreen> {
     if (!(formKey.currentState?.validate() ?? false)) return;
     final finalTrade = (trade ?? tradeFree.text).trim();
     if (finalTrade.isEmpty) {
-      setState(() => error = 'Trade is required');
+      setState(() => error = Strings.t(context, 'f_trade_required'));
       return;
     }
     setState(() {
@@ -1487,7 +1541,7 @@ class _PostFormScreenState extends State<PostFormScreen> {
     final cityOptions = MetaCache.cities;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Showcase your work'),
+        title: Text(Strings.t(context, 'showcase_title')),
         actions: const [ThemeToggleButton()],
       ),
       body: SingleChildScrollView(
@@ -1557,13 +1611,13 @@ class _PostFormScreenState extends State<PostFormScreen> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Column(
+                            : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.add_a_photo_outlined),
                                   Text(
-                                    'Add photo',
-                                    style: TextStyle(fontSize: 11),
+                                    Strings.t(context, 'f_add_photo'),
+                                    style: const TextStyle(fontSize: 11),
                                   ),
                                 ],
                               ),
@@ -1575,42 +1629,45 @@ class _PostFormScreenState extends State<PostFormScreen> {
               const SizedBox(height: 10),
               TextFormField(
                 controller: title,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
+                decoration: InputDecoration(
+                  labelText: Strings.t(context, 'f_title'),
                   prefixIcon: Icon(Icons.title_outlined),
                 ),
                 validator: (v) => (v ?? '').trim().isEmpty
-                    ? 'Give your post a title'
+                    ? Strings.t(context, 'f_title_hint_post')
                     : null,
               ),
               const SizedBox(height: 10),
               if (tradeSlugs.isNotEmpty)
                 DropdownButtonFormField<String>(
                   initialValue: tradeSlugs.contains(trade) ? trade : null,
-                  decoration: const InputDecoration(
-                    labelText: 'Trade',
+                  decoration: InputDecoration(
+                    labelText: Strings.t(context, 'f_trade'),
                     prefixIcon: Icon(Icons.handyman_outlined),
                   ),
                   items: [
                     for (final s in tradeSlugs)
                       DropdownMenuItem(
                         value: s,
-                        child: Text(MetaCache.label(s)),
+                        child: Text(
+                          MetaCache.label(s, ar: Strings.isAr(context)),
+                        ),
                       ),
                   ],
                   onChanged: (v) => setState(() => trade = v),
                   validator: (v) =>
-                      v == null ? 'Pick your trade' : null,
+                      v == null ? Strings.t(context, 'f_pick_trade') : null,
                 )
               else
                 TextFormField(
                   controller: tradeFree,
-                  decoration: const InputDecoration(
-                    labelText: 'Trade (painter, plumber, electrician…)',
+                  decoration: InputDecoration(
+                    labelText: Strings.t(context, 'f_trade_hint'),
                     prefixIcon: Icon(Icons.handyman_outlined),
                   ),
-                  validator: (v) =>
-                      (v ?? '').trim().isEmpty ? 'Trade is required' : null,
+                  validator: (v) => (v ?? '').trim().isEmpty
+                      ? Strings.t(context, 'f_trade_required')
+                      : null,
                 ),
               const SizedBox(height: 10),
               Row(
@@ -1618,27 +1675,32 @@ class _PostFormScreenState extends State<PostFormScreen> {
                   Expanded(
                     child: cityOptions.isNotEmpty
                         ? DropdownButtonFormField<String>(
-                            initialValue:
-                                cityOptions.contains(city) ? city : null,
-                            decoration: const InputDecoration(
-                              labelText: 'City',
-                              prefixIcon: Icon(
-                                Icons.location_city_outlined,
-                              ),
+                            initialValue: cityOptions.contains(city)
+                                ? city
+                                : null,
+                            decoration: InputDecoration(
+                              labelText: Strings.t(context, 'f_city'),
+                              prefixIcon: Icon(Icons.location_city_outlined),
                             ),
                             items: [
                               for (final c in cityOptions)
-                                DropdownMenuItem(value: c, child: Text(c)),
+                                DropdownMenuItem(
+                                  value: c,
+                                  child: Text(
+                                    MetaCache.cityLabel(
+                                      c,
+                                      ar: Strings.isAr(context),
+                                    ),
+                                  ),
+                                ),
                             ],
                             onChanged: (v) => setState(() => city = v),
                           )
                         : TextFormField(
                             controller: cityFree,
-                            decoration: const InputDecoration(
-                              labelText: 'City',
-                              prefixIcon: Icon(
-                                Icons.location_city_outlined,
-                              ),
+                            decoration: InputDecoration(
+                              labelText: Strings.t(context, 'f_city'),
+                              prefixIcon: Icon(Icons.location_city_outlined),
                             ),
                           ),
                   ),
@@ -1646,8 +1708,8 @@ class _PostFormScreenState extends State<PostFormScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: price,
-                      decoration: const InputDecoration(
-                        labelText: 'Price (DZD)',
+                      decoration: InputDecoration(
+                        labelText: Strings.t(context, 'f_price'),
                         prefixIcon: Icon(Icons.payments_outlined),
                       ),
                       keyboardType: TextInputType.number,
@@ -1658,13 +1720,13 @@ class _PostFormScreenState extends State<PostFormScreen> {
               const SizedBox(height: 10),
               TextFormField(
                 controller: desc,
-                decoration: const InputDecoration(
-                  labelText: 'Describe your work, experience, materials…',
+                decoration: InputDecoration(
+                  labelText: Strings.t(context, 'f_desc_work'),
                   alignLabelWithHint: true,
                 ),
                 maxLines: 5,
                 validator: (v) => (v ?? '').trim().length < 10
-                    ? 'A few more details help clients trust you'
+                    ? Strings.t(context, 'f_desc_min')
                     : null,
               ),
               if (error != null) ...[
@@ -1694,7 +1756,7 @@ class _PostFormScreenState extends State<PostFormScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Publish post'),
+                    : Text(Strings.t(context, 'f_publish')),
               ),
             ],
           ),
@@ -1767,7 +1829,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       const SizedBox(height: 12),
                       FilledButton.icon(
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Retry'),
+                        label: Text(Strings.t(context, 'retry')),
                         onPressed: _load,
                       ),
                     ],
@@ -1786,7 +1848,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final ratingCount = ((u['rating_count'] as num?)?.toInt() ?? 0);
     return Scaffold(
       appBar: AppBar(
-        title: Text(post!['title'] ?? 'Post'),
+        title: Text(post!['title'] ?? Strings.t(context, 'post_word')),
         actions: const [ThemeToggleButton()],
       ),
       body: ListView(
@@ -1801,10 +1863,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => CraftsmanProfileScreen(
-                      api: widget.api,
-                      userId: id,
-                    ),
+                    builder: (_) =>
+                        CraftsmanProfileScreen(api: widget.api, userId: id),
                   ),
                 );
               }
@@ -1838,12 +1898,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             ],
                           )
                         else
-                          const Text(
-                            'New craftsman',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
+                          Text(
+                            Strings.t(context, 'new_craftsman'),
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                       ],
                     ),
@@ -1855,7 +1912,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          Text(post!['description'] ?? '', style: const TextStyle(fontSize: 15)),
+          Text(
+            post!['description'] ?? '',
+            style: const TextStyle(fontSize: 15),
+          ),
           if (photos.isNotEmpty) ...[
             const SizedBox(height: 10),
             SizedBox(
@@ -1895,7 +1955,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           ),
           const Divider(),
           Text(
-            'Comments (${comments.length})',
+            Strings.t(context, 'comments_title', {'n': '${comments.length}'}),
             style: Theme.of(context).textTheme.titleMedium,
           ),
           for (final c in comments)
@@ -1944,7 +2004,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               Expanded(
                 child: TextField(
                   controller: comment,
-                  decoration: const InputDecoration(hintText: 'Add a comment…'),
+                  decoration: InputDecoration(
+                    hintText: Strings.t(context, 'comment_hint'),
+                  ),
                 ),
               ),
               IconButton(
@@ -2040,9 +2102,9 @@ class _JobsTabState extends State<JobsTab> {
               Expanded(
                 child: TextField(
                   controller: search,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     prefixIcon: Icon(Icons.search),
-                    hintText: 'Search jobs…',
+                    hintText: Strings.t(context, 'search_jobs'),
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -2060,7 +2122,11 @@ class _JobsTabState extends State<JobsTab> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: ChoiceChip(
-                      label: Text(s.isEmpty ? 'all' : s),
+                      label: Text(
+                        s.isEmpty
+                            ? Strings.t(context, 'status_all')
+                            : Strings.t(context, 'status_$s'),
+                      ),
                       selected: status == s,
                       onSelected: (_) {
                         setState(() => status = s);
@@ -2078,7 +2144,7 @@ class _JobsTabState extends State<JobsTab> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.add),
-                label: const Text('Post a job request'),
+                label: Text(Strings.t(context, 'post_job_btn')),
                 onPressed: () async {
                   final created = await Navigator.push(
                     context,
@@ -2105,7 +2171,7 @@ class _JobsTabState extends State<JobsTab> {
                         const SizedBox(height: 12),
                         FilledButton.icon(
                           icon: const Icon(Icons.refresh),
-                          label: const Text('Retry'),
+                          label: Text(Strings.t(context, 'retry')),
                           onPressed: _load,
                         ),
                       ],
@@ -2113,9 +2179,9 @@ class _JobsTabState extends State<JobsTab> {
                   ),
                 )
               : items.isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
-                    padding: EdgeInsets.all(28),
+                    padding: const EdgeInsets.all(28),
                     child: Text(
                       'No jobs yet — clients, post the first request! 👆',
                       textAlign: TextAlign.center,
@@ -2193,7 +2259,10 @@ class _JobsTabState extends State<JobsTab> {
                                         color: muted(context),
                                       ),
                                       Text(
-                                        j['city'],
+                                        MetaCache.cityLabel(
+                                          j['city'],
+                                          ar: Strings.isAr(context),
+                                        ),
                                         style: TextStyle(
                                           color: muted(context),
                                           fontSize: 13,
@@ -2286,7 +2355,7 @@ class _JobFormScreenState extends State<JobFormScreen> {
     if (!(formKey.currentState?.validate() ?? false)) return;
     final finalTrade = (tradeSel ?? tradeFree.text).trim();
     if (finalTrade.isEmpty) {
-      setState(() => error = 'Trade is required');
+      setState(() => error = Strings.t(context, 'f_trade_required'));
       return;
     }
     setState(() {
@@ -2312,6 +2381,7 @@ class _JobFormScreenState extends State<JobFormScreen> {
       if (mounted) setState(() => busy = false);
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final tradeSlugs = MetaCache.trades
@@ -2321,7 +2391,7 @@ class _JobFormScreenState extends State<JobFormScreen> {
     final cityOptions = MetaCache.cities;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Describe your job'),
+        title: Text(Strings.t(context, 'job_title')),
         actions: const [ThemeToggleButton()],
       ),
       body: SingleChildScrollView(
@@ -2357,8 +2427,7 @@ class _JobFormScreenState extends State<JobFormScreen> {
                               right: 6,
                               top: 6,
                               child: InkWell(
-                                onTap: () =>
-                                    setState(() => coverUrl = null),
+                                onTap: () => setState(() => coverUrl = null),
                                 child: const CircleAvatar(
                                   radius: 14,
                                   backgroundColor: Colors.black54,
@@ -2373,18 +2442,13 @@ class _JobFormScreenState extends State<JobFormScreen> {
                           ],
                         )
                       : uploading
-                      ? const Center(
-                          child: CircularProgressIndicator(),
-                        )
-                      : const Column(
+                      ? const Center(child: CircularProgressIndicator())
+                      : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.add_a_photo_outlined,
-                              size: 32,
-                            ),
-                            SizedBox(height: 4),
-                            Text('Add a photo of the job (optional)'),
+                            const Icon(Icons.add_a_photo_outlined, size: 32),
+                            const SizedBox(height: 4),
+                            Text(Strings.t(context, 'f_cover')),
                           ],
                         ),
                 ),
@@ -2392,12 +2456,13 @@ class _JobFormScreenState extends State<JobFormScreen> {
               const SizedBox(height: 10),
               TextFormField(
                 controller: title,
-                decoration: const InputDecoration(
-                  labelText: 'What do you need? (e.g. Repaint living room)',
+                decoration: InputDecoration(
+                  labelText: Strings.t(context, 'f_need'),
                   prefixIcon: Icon(Icons.work_outline),
                 ),
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? 'Title is required' : null,
+                validator: (v) => (v ?? '').trim().isEmpty
+                    ? Strings.t(context, 'f_title_required')
+                    : null,
               ),
               const SizedBox(height: 10),
               Row(
@@ -2408,30 +2473,35 @@ class _JobFormScreenState extends State<JobFormScreen> {
                             initialValue: tradeSlugs.contains(tradeSel)
                                 ? tradeSel
                                 : null,
-                            decoration: const InputDecoration(
-                              labelText: 'Trade needed',
+                            decoration: InputDecoration(
+                              labelText: Strings.t(context, 'f_need_trade'),
                               prefixIcon: Icon(Icons.handyman_outlined),
                             ),
                             items: [
                               for (final s in tradeSlugs)
                                 DropdownMenuItem(
                                   value: s,
-                                  child: Text(MetaCache.label(s)),
+                                  child: Text(
+                                    MetaCache.label(
+                                      s,
+                                      ar: Strings.isAr(context),
+                                    ),
+                                  ),
                                 ),
                             ],
-                            onChanged: (v) =>
-                                setState(() => tradeSel = v),
-                            validator: (v) =>
-                                v == null ? 'Required' : null,
+                            onChanged: (v) => setState(() => tradeSel = v),
+                            validator: (v) => v == null
+                                ? Strings.t(context, 'f_required')
+                                : null,
                           )
                         : TextFormField(
                             controller: tradeFree,
-                            decoration: const InputDecoration(
-                              labelText: 'Trade needed',
+                            decoration: InputDecoration(
+                              labelText: Strings.t(context, 'f_need_trade'),
                               prefixIcon: Icon(Icons.handyman_outlined),
                             ),
                             validator: (v) => (v ?? '').trim().isEmpty
-                                ? 'Required'
+                                ? Strings.t(context, 'f_required')
                                 : null,
                           ),
                   ),
@@ -2439,27 +2509,32 @@ class _JobFormScreenState extends State<JobFormScreen> {
                   Expanded(
                     child: cityOptions.isNotEmpty
                         ? DropdownButtonFormField<String>(
-                            initialValue:
-                                cityOptions.contains(citySel) ? citySel : null,
-                            decoration: const InputDecoration(
-                              labelText: 'City',
-                              prefixIcon: Icon(
-                                Icons.location_city_outlined,
-                              ),
+                            initialValue: cityOptions.contains(citySel)
+                                ? citySel
+                                : null,
+                            decoration: InputDecoration(
+                              labelText: Strings.t(context, 'f_city'),
+                              prefixIcon: Icon(Icons.location_city_outlined),
                             ),
                             items: [
                               for (final c in cityOptions)
-                                DropdownMenuItem(value: c, child: Text(c)),
+                                DropdownMenuItem(
+                                  value: c,
+                                  child: Text(
+                                    MetaCache.cityLabel(
+                                      c,
+                                      ar: Strings.isAr(context),
+                                    ),
+                                  ),
+                                ),
                             ],
                             onChanged: (v) => setState(() => citySel = v),
                           )
                         : TextFormField(
                             controller: cityFree,
-                            decoration: const InputDecoration(
-                              labelText: 'City',
-                              prefixIcon: Icon(
-                                Icons.location_city_outlined,
-                              ),
+                            decoration: InputDecoration(
+                              labelText: Strings.t(context, 'f_city'),
+                              prefixIcon: Icon(Icons.location_city_outlined),
                             ),
                           ),
                   ),
@@ -2468,8 +2543,8 @@ class _JobFormScreenState extends State<JobFormScreen> {
               const SizedBox(height: 10),
               TextFormField(
                 controller: budget,
-                decoration: const InputDecoration(
-                  labelText: 'Budget DZD (optional)',
+                decoration: InputDecoration(
+                  labelText: Strings.t(context, 'f_budget'),
                   prefixIcon: Icon(Icons.payments_outlined),
                 ),
                 keyboardType: TextInputType.number,
@@ -2477,13 +2552,13 @@ class _JobFormScreenState extends State<JobFormScreen> {
               const SizedBox(height: 10),
               TextFormField(
                 controller: desc,
-                decoration: const InputDecoration(
-                  labelText: 'Details: size, materials, timing…',
+                decoration: InputDecoration(
+                  labelText: Strings.t(context, 'f_job_details'),
                   alignLabelWithHint: true,
                 ),
                 maxLines: 5,
                 validator: (v) => (v ?? '').trim().length < 10
-                    ? 'Add a few details so craftsmen can respond'
+                    ? Strings.t(context, 'f_job_details_min')
                     : null,
               ),
               if (error != null) ...[
@@ -2513,7 +2588,7 @@ class _JobFormScreenState extends State<JobFormScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Post job request'),
+                    : Text(Strings.t(context, 'f_post_job')),
               ),
             ],
           ),
@@ -2627,7 +2702,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                       const SizedBox(height: 12),
                       FilledButton.icon(
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Retry'),
+                        label: Text(Strings.t(context, 'retry')),
                         onPressed: _load,
                       ),
                     ],
@@ -2642,7 +2717,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     final chatOpen = st == 'accepted' || st == 'completed';
     return Scaffold(
       appBar: AppBar(
-        title: Text(job!['title'] ?? 'Job'),
+        title: Text(job!['title'] ?? Strings.t(context, 'job_word')),
         actions: const [ThemeToggleButton()],
       ),
       body: Column(
@@ -2684,7 +2759,10 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                         ),
                         const SizedBox(width: 2),
                         Text(
-                          job!['city'],
+                          MetaCache.cityLabel(
+                            job!['city'],
+                            ar: Strings.isAr(context),
+                          ),
                           style: TextStyle(color: muted(context)),
                         ),
                       ],
@@ -2702,24 +2780,24 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                       if (isCraft && st == 'open')
                         FilledButton.icon(
                           icon: const Icon(Icons.handshake_outlined),
-                          label: const Text('Accept job → open chat'),
+                          label: Text(Strings.t(context, 'accept_open_chat')),
                           onPressed: () => _action('accept'),
                         ),
                       if (!isCraft && st == 'accepted')
                         FilledButton.icon(
                           icon: const Icon(Icons.check_circle_outline),
-                          label: const Text('Mark completed'),
+                          label: Text(Strings.t(context, 'mark_completed')),
                           onPressed: () => _action('complete'),
                         ),
                       if (st == 'open' || st == 'accepted')
                         OutlinedButton(
                           onPressed: () => _action('cancel'),
-                          child: const Text('Cancel'),
+                          child: Text(Strings.t(context, 'cancel')),
                         ),
                       if (!isCraft && st == 'completed')
                         FilledButton.tonalIcon(
                           icon: const Icon(Icons.star_outline),
-                          label: const Text('Rate craftsman'),
+                          label: Text(Strings.t(context, 'rate_craftsman')),
                           onPressed: () async {
                             final done = await showDialog<bool>(
                               context: context,
@@ -2731,8 +2809,10 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                             if (done == true) {
                               if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Thanks for the review! ⭐'),
+                                SnackBar(
+                                  content: Text(
+                                    Strings.t(context, 'thanks_review'),
+                                  ),
                                 ),
                               );
                             }
@@ -2753,7 +2833,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
               child: Row(
                 children: [
                   Text(
-                    'Chat (updates every 5s)',
+                    Strings.t(context, 'chat_live'),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ],
@@ -2761,89 +2841,92 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
             ),
             Expanded(
               child: messages.isEmpty
-                  ? const Center(child: Text('Say salam! 👋'))
+                  ? Center(child: Text(Strings.t(context, 'say_salam')))
                   : ListView.builder(
-                    itemCount: messages.length,
-                    itemBuilder: (_, i) {
-                      final m = messages[i] as Map<String, dynamic>;
-                      final mine =
-                          (m['sender_id'] as num).toInt().toString() ==
-                          widget.session.user?['id'].toString();
-                      final sender = (m['sender'] as Map?) ?? {};
-                      return Align(
-                        alignment: mine
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Container(
-                          constraints: BoxConstraints(
-                            maxWidth: MediaQuery.of(context).size.width * 0.75,
-                          ),
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: mine ? kTeal : softBg(context),
-                            borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(16),
-                              topRight: const Radius.circular(16),
-                              bottomLeft: Radius.circular(mine ? 16 : 4),
-                              bottomRight: Radius.circular(mine ? 4 : 16),
+                      itemCount: messages.length,
+                      itemBuilder: (_, i) {
+                        final m = messages[i] as Map<String, dynamic>;
+                        final mine =
+                            (m['sender_id'] as num).toInt().toString() ==
+                            widget.session.user?['id'].toString();
+                        final sender = (m['sender'] as Map?) ?? {};
+                        return Align(
+                          alignment: mine
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            constraints: BoxConstraints(
+                              maxWidth:
+                                  MediaQuery.of(context).size.width * 0.75,
                             ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: mine
-                                ? CrossAxisAlignment.end
-                                : CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (!mine && (sender['name'] ?? '') != '')
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: mine ? kTeal : softBg(context),
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(16),
+                                topRight: const Radius.circular(16),
+                                bottomLeft: Radius.circular(mine ? 16 : 4),
+                                bottomRight: Radius.circular(mine ? 4 : 16),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: mine
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (!mine && (sender['name'] ?? '') != '')
+                                  Text(
+                                    sender['name'],
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: muted(context),
+                                    ),
+                                  ),
                                 Text(
-                                  sender['name'],
+                                  m['body'] ?? '',
                                   style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: muted(context),
+                                    color: mine
+                                        ? Colors.white
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
+                                    fontSize: 15,
                                   ),
                                 ),
-                              Text(
-                                m['body'] ?? '',
-                                style: TextStyle(
-                                  color: mine
- ? Colors.white
- : Theme.of(context).colorScheme.onSurface,
-                                  fontSize: 15,
+                                Text(
+                                  shortTime(m['created_at'] as String?),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: mine
+                                        ? Colors.white70
+                                        : muted(context),
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                shortTime(m['created_at'] as String?),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: mine
-                                      ? Colors.white70
-                                      : muted(context),
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
             ),
-          Padding(
+            Padding(
               padding: const EdgeInsets.all(8),
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: msg,
-                      decoration: const InputDecoration(
-                        hintText: 'Message…',
+                      decoration: InputDecoration(
+                        hintText: Strings.t(context, 'message_hint'),
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -2888,10 +2971,12 @@ class AccountTab extends StatelessWidget {
     required this.session,
     required this.api,
     required this.theme,
+    required this.locale,
   });
   final Session session;
   final ApiClient api;
   final AppTheme theme;
+  final AppLocale locale;
   @override
   Widget build(BuildContext context) {
     final u = session.user ?? {};
@@ -2934,7 +3019,10 @@ class AccountTab extends StatelessWidget {
                               color: muted(context),
                             ),
                             Text(
-                              u['city'],
+                              MetaCache.cityLabel(
+                                u['city'],
+                                ar: Strings.isAr(context),
+                              ),
                               style: TextStyle(
                                 color: muted(context),
                                 fontSize: 13,
@@ -2954,7 +3042,7 @@ class AccountTab extends StatelessWidget {
           Card(
             child: ListTile(
               leading: Icon(Icons.handyman_outlined, color: proTeal(context)),
-              title: const Text('My trade'),
+              title: Text(Strings.t(context, 'my_trade')),
               subtitle: Text(u['trade']),
             ),
           ),
@@ -2963,37 +3051,35 @@ class AccountTab extends StatelessWidget {
             children: [
               ListTile(
                 leading: Icon(Icons.edit_outlined, color: proTeal(context)),
-                title: const Text('Edit profile'),
-                subtitle: const Text('Name, phone, trade, city, bio'),
+                title: Text(Strings.t(context, 'edit_title')),
+                subtitle: Text(Strings.t(context, 'edit_profile_sub')),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ProfileEditScreen(
-                        session: session,
-                        api: api,
-                      ),
+                      builder: (_) =>
+                          ProfileEditScreen(session: session, api: api),
                     ),
                   );
                 },
               ),
               ListTile(
                 leading: Icon(Icons.work_outline, color: proTeal(context)),
-                title: const Text('My jobs'),
+                title: Text(Strings.t(context, 'my_jobs')),
                 subtitle: Text(
                   isCraft
-                      ? 'Accepted work and requests appear here'
-                      : 'Track your requests and chats here',
+                      ? Strings.t(context, 'my_jobs_sub_craft')
+                      : Strings.t(context, 'my_jobs_sub_client'),
                 ),
               ),
               ListTile(
                 leading: Icon(Icons.store_outlined, color: proTeal(context)),
-                title: const Text('Marketplace'),
+                title: Text(Strings.t(context, 'marketplace')),
                 subtitle: Text(
                   isCraft
-                      ? 'Your portfolio posts live under Posts'
-                      : 'Browse craftsmen under Posts',
+                      ? Strings.t(context, 'marketplace_sub_craft')
+                      : Strings.t(context, 'marketplace_sub_client'),
                 ),
               ),
               ListTile(
@@ -3003,14 +3089,56 @@ class AccountTab extends StatelessWidget {
                       : Icons.dark_mode_outlined,
                   color: proTeal(context),
                 ),
-                title: const Text('Appearance'),
+                title: Text(Strings.t(context, 'appearance')),
                 subtitle: Text(
                   Theme.of(context).brightness == Brightness.dark
-                      ? 'Dark mode — tap for light'
-                      : 'Light mode — tap for dark',
+                      ? Strings.t(context, 'appearance_dark')
+                      : Strings.t(context, 'appearance_light'),
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => theme.toggle(context),
+              ),
+              ListTile(
+                leading: Icon(Icons.language_outlined, color: proTeal(context)),
+                title: Text(Strings.t(context, 'language')),
+                subtitle: Text(
+                  locale.code == 'ar'
+                      ? 'العربية'
+                      : locale.code == 'en'
+                      ? 'English'
+                      : Strings.t(context, 'language_sub'),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  final pick = await showDialog<String>(
+                    context: context,
+                    builder: (c) => SimpleDialog(
+                      title: Text(Strings.t(context, 'language')),
+                      children: [
+                        for (final opt in const ['ar', 'en', 'system'])
+                          SimpleDialogOption(
+                            onPressed: () => Navigator.pop(c, opt),
+                            child: Row(
+                              children: [
+                                if (locale.code == opt ||
+                                    (opt == 'system' &&
+                                        locale.code == 'system'))
+                                  const Icon(Icons.check, size: 18),
+                                Text(
+                                  opt == 'ar'
+                                      ? 'العربية'
+                                      : opt == 'en'
+                                      ? 'English'
+                                      : 'System / النظام',
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                  if (pick != null) await locale.set(pick);
+                },
               ),
             ],
           ),
@@ -3018,7 +3146,10 @@ class AccountTab extends StatelessWidget {
         const SizedBox(height: 8),
         OutlinedButton.icon(
           icon: const Icon(Icons.logout, color: Colors.red),
-          label: const Text('Logout', style: TextStyle(color: Colors.red)),
+          label: Text(
+            Strings.t(context, 'logout'),
+            style: const TextStyle(color: Colors.red),
+          ),
           style: OutlinedButton.styleFrom(
             side: BorderSide(color: Colors.red.shade200),
           ),
@@ -3097,7 +3228,7 @@ class _CraftsmanProfileScreenState extends State<CraftsmanProfileScreen> {
     final count = ((c['rating_count'] as num?)?.toInt() ?? 0);
     return Scaffold(
       appBar: AppBar(
-        title: Text((c['name'] ?? 'Craftsman') as String),
+        title: Text((c['name'] ?? Strings.t(context, 'role_craftsman')) as String),
         actions: const [ThemeToggleButton()],
       ),
       body: ListView(
@@ -3108,10 +3239,7 @@ class _CraftsmanProfileScreenState extends State<CraftsmanProfileScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  InitialAvatar(
-                    name: (c['name'] ?? '?') as String,
-                    radius: 30,
-                  ),
+                  InitialAvatar(name: (c['name'] ?? '?') as String, radius: 30),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -3126,7 +3254,10 @@ class _CraftsmanProfileScreenState extends State<CraftsmanProfileScreen> {
                         ),
                         if ((c['city'] ?? '') != '')
                           Text(
-                            c['city'],
+                            MetaCache.cityLabel(
+                              c['city'],
+                              ar: Strings.isAr(context),
+                            ),
                             style: TextStyle(color: muted(context)),
                           ),
                         const SizedBox(height: 4),
@@ -3160,15 +3291,15 @@ class _CraftsmanProfileScreenState extends State<CraftsmanProfileScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
-              'Reviews ($count)',
+              Strings.t(context, 'reviews_title', {'n': '$count'}),
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
           if (reviews.isEmpty)
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(14),
-                child: Text('No reviews yet — be the first after a job!'),
+                padding: const EdgeInsets.all(14),
+                child: Text(Strings.t(context, 'no_reviews')),
               ),
             ),
           for (final r in reviews)
@@ -3228,7 +3359,7 @@ class _ReviewDialogState extends State<ReviewDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Rate this craftsman'),
+      title: Text(Strings.t(context, 'rate_title')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -3248,25 +3379,22 @@ class _ReviewDialogState extends State<ReviewDialog> {
           ),
           TextField(
             controller: comment,
-            decoration: const InputDecoration(
-              hintText: 'What went well? (optional)',
+            decoration: InputDecoration(
+              hintText: Strings.t(context, 'rate_hint'),
             ),
             maxLines: 3,
           ),
           if (error != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                error!,
-                style: const TextStyle(color: Colors.red),
-              ),
+              child: Text(error!, style: const TextStyle(color: Colors.red)),
             ),
         ],
       ),
       actions: [
         TextButton(
           onPressed: busy ? null : () => Navigator.pop(context, false),
-          child: const Text('Later'),
+          child: Text(Strings.t(context, 'later')),
         ),
         FilledButton(
           onPressed: busy
@@ -3280,9 +3408,7 @@ class _ReviewDialogState extends State<ReviewDialog> {
                     await widget.api.createReview(
                       widget.jobId,
                       rating,
-                      comment.text.trim().isEmpty
-                          ? null
-                          : comment.text.trim(),
+                      comment.text.trim().isEmpty ? null : comment.text.trim(),
                     );
                     if (context.mounted) Navigator.pop(context, true);
                   } catch (e) {
@@ -3294,7 +3420,7 @@ class _ReviewDialogState extends State<ReviewDialog> {
                     if (mounted) setState(() => busy = false);
                   }
                 },
-          child: const Text('Send review'),
+          child: Text(Strings.t(context, 'send_review')),
         ),
       ],
     );
@@ -3370,20 +3496,20 @@ class _NotificationsTabState extends State<NotificationsTab> {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
           child: Row(
             children: [
-              const Text(
-                'Alerts',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                Strings.t(context, 'alerts_title'),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const Spacer(),
               TextButton.icon(
                 icon: const Icon(Icons.done_all, size: 18),
-                label: const Text('Mark all read'),
+                label: Text(Strings.t(context, 'mark_all_read')),
                 onPressed: _markAllRead,
               ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: _load,
-              ),
+              IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
             ],
           ),
         ),
@@ -3393,9 +3519,7 @@ class _NotificationsTabState extends State<NotificationsTab> {
               : error != null
               ? ErrorRetry(message: error!, onRetry: _load)
               : items.isEmpty
-              ? const Center(
-                  child: Text('Nothing yet — accepts and messages land here.'),
-                )
+              ? Center(child: Text(Strings.t(context, 'no_alerts')))
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.builder(
@@ -3406,7 +3530,9 @@ class _NotificationsTabState extends State<NotificationsTab> {
                       final jobId =
                           ((n['data'] as Map?) ?? {})['job_id'] as num?;
                       return Card(
-                        color: unread ? proTeal(context).withValues(alpha: 0.08) : null,
+                        color: unread
+                            ? proTeal(context).withValues(alpha: 0.08)
+                            : null,
                         child: ListTile(
                           leading: Icon(
                             _icons[(n['type'] ?? '') as String] ??
@@ -3472,7 +3598,11 @@ class _NotificationsTabState extends State<NotificationsTab> {
 // ---------- Profile edit ----------
 
 class ProfileEditScreen extends StatefulWidget {
-  const ProfileEditScreen({super.key, required this.session, required this.api});
+  const ProfileEditScreen({
+    super.key,
+    required this.session,
+    required this.api,
+  });
   final Session session;
   final ApiClient api;
   @override
@@ -3482,9 +3612,7 @@ class ProfileEditScreen extends StatefulWidget {
 class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final formKey = GlobalKey<FormState>();
   late final name = TextEditingController(text: widget.session.user?['name']);
-  late final phone = TextEditingController(
-    text: widget.session.user?['phone'],
-  );
+  late final phone = TextEditingController(text: widget.session.user?['phone']);
   late final city = TextEditingController(text: widget.session.user?['city']);
   late final bio = TextEditingController(text: widget.session.user?['bio']);
   String? trade;
@@ -3526,13 +3654,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   Widget build(BuildContext context) {
     final tradeOptions = [
       ...MetaCache.trades.map((t) => (t['slug'] ?? '') as String),
-      if (trade != null &&
-          !MetaCache.trades.any((t) => t['slug'] == trade))
+      if (trade != null && !MetaCache.trades.any((t) => t['slug'] == trade))
         trade!,
     ];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit profile'),
+        title: Text(Strings.t(context, 'edit_title')),
         actions: const [ThemeToggleButton()],
       ),
       body: SingleChildScrollView(
@@ -3544,15 +3671,18 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             children: [
               TextFormField(
                 controller: name,
-                decoration: const InputDecoration(labelText: 'Full name'),
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? 'Name is required' : null,
+                decoration: InputDecoration(
+                  labelText: Strings.t(context, 'full_name'),
+                ),
+                validator: (v) => (v ?? '').trim().isEmpty
+                    ? Strings.t(context, 'v_name')
+                    : null,
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: phone,
-                decoration: const InputDecoration(
-                  labelText: 'Phone (optional)',
+                decoration: InputDecoration(
+                  labelText: Strings.t(context, 'f_phone'),
                 ),
                 keyboardType: TextInputType.phone,
               ),
@@ -3560,30 +3690,41 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               if (widget.session.isCraftsman)
                 DropdownButtonFormField<String>(
                   initialValue: tradeOptions.contains(trade) ? trade : null,
-                  decoration: const InputDecoration(labelText: 'Trade'),
+                  decoration: InputDecoration(
+                    labelText: Strings.t(context, 'f_trade'),
+                  ),
                   items: [
                     for (final s in tradeOptions)
-                      DropdownMenuItem(value: s, child: Text(MetaCache.label(s))),
+                      DropdownMenuItem(
+                        value: s,
+                        child: Text(
+                          MetaCache.label(s, ar: Strings.isAr(context)),
+                        ),
+                      ),
                   ],
                   onChanged: (v) => setState(() => trade = v),
                 )
               else
                 TextFormField(
                   controller: city,
-                  decoration: const InputDecoration(labelText: 'City'),
+                  decoration: InputDecoration(
+                    labelText: Strings.t(context, 'f_city'),
+                  ),
                 ),
               if (widget.session.isCraftsman) ...[
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: city,
-                  decoration: const InputDecoration(labelText: 'City'),
+                  decoration: InputDecoration(
+                    labelText: Strings.t(context, 'f_city'),
+                  ),
                 ),
               ],
               const SizedBox(height: 10),
               TextFormField(
                 controller: bio,
-                decoration: const InputDecoration(
-                  labelText: 'Bio (optional)',
+                decoration: InputDecoration(
+                  labelText: Strings.t(context, 'f_bio'),
                   alignLabelWithHint: true,
                 ),
                 maxLines: 3,
@@ -3604,7 +3745,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Save'),
+                    : Text(Strings.t(context, 'save')),
               ),
             ],
           ),
@@ -3634,7 +3775,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _send() async {
     if (email.text.trim().isEmpty || !email.text.contains('@')) {
-      setState(() => error = 'Enter a valid email');
+      setState(() => error = Strings.t(context, 'v_email_bad'));
       return;
     }
     setState(() {
@@ -3650,8 +3791,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         step = 1;
         // v1 backend returns the code (no mail wired yet).
         info = r['code'] != null
-            ? 'Code: ${r['code']} (enter it below)'
-            : 'If this email exists, a code was sent.';
+            ? Strings.t(context, 'code_is', {'code': '${r['code']}'})
+            : Strings.t(context, 'code_sent');
       });
     } catch (e) {
       if (!mounted) return;
@@ -3664,11 +3805,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _reset() async {
     if (code.text.trim().length != 6) {
-      setState(() => error = 'The code has 6 digits');
+      setState(() => error = Strings.t(context, 'code_hint'));
       return;
     }
     if (password.text.length < 8) {
-      setState(() => error = 'Password needs 8+ characters');
+      setState(() => error = Strings.t(context, 'pass_hint'));
       return;
     }
     setState(() {
@@ -3683,7 +3824,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password changed — login now.')),
+        SnackBar(content: Text(Strings.t(context, 'password_changed'))),
       );
       Navigator.pop(context);
     } catch (e) {
@@ -3699,7 +3840,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reset password'),
+        title: Text(Strings.t(context, 'reset_title')),
         actions: const [ThemeToggleButton()],
       ),
       body: Padding(
@@ -3708,11 +3849,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (step == 0) ...[
-              const Text('Enter your account email to get a reset code.'),
+              Text(Strings.t(context, 'reset_step1')),
               const SizedBox(height: 12),
               TextField(
                 controller: email,
-                decoration: const InputDecoration(labelText: 'Email'),
+                decoration: InputDecoration(
+                  labelText: Strings.t(context, 'email'),
+                ),
                 keyboardType: TextInputType.emailAddress,
               ),
             ] else ...[
@@ -3728,16 +3871,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               const SizedBox(height: 12),
               TextField(
                 controller: code,
-                decoration: const InputDecoration(
-                  labelText: '6-digit code',
+                decoration: InputDecoration(
+                  labelText: Strings.t(context, 'code_label'),
                 ),
                 keyboardType: TextInputType.number,
                 maxLength: 6,
               ),
               TextField(
                 controller: password,
-                decoration: const InputDecoration(
-                  labelText: 'New password (8+ chars)',
+                decoration: InputDecoration(
+                  labelText: Strings.t(context, 'new_password'),
                 ),
                 obscureText: true,
               ),
@@ -3749,7 +3892,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             const SizedBox(height: 16),
             FilledButton(
               onPressed: busy ? null : (step == 0 ? _send : _reset),
-              child: Text(step == 0 ? 'Send code' : 'Change password'),
+              child: Text(
+                step == 0
+                    ? Strings.t(context, 'send_code')
+                    : Strings.t(context, 'change_password'),
+              ),
             ),
           ],
         ),
@@ -3845,7 +3992,7 @@ class PostCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        MetaCache.label(trade),
+                        MetaCache.label(trade, ar: Strings.isAr(context)),
                         style: const TextStyle(
                           color: kTeal,
                           fontWeight: FontWeight.w700,
@@ -3918,7 +4065,7 @@ class PostCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      MetaCache.label(trade),
+                      MetaCache.label(trade, ar: Strings.isAr(context)),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -3960,7 +4107,7 @@ class PostCard extends StatelessWidget {
                               children: [
                                 Flexible(
                                   child: Text(
-                                    '${u['name'] ?? ''}${(p['city'] ?? '') != '' ? ' · ${p['city']}' : ''}',
+                                    '${u['name'] ?? ''}${(p['city'] ?? '') != '' ? ' · ${MetaCache.cityLabel(p['city'], ar: Strings.isAr(context))}' : ''}',
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       color: muted(context),
@@ -3991,10 +4138,7 @@ class PostCard extends StatelessWidget {
                     (p['description'] ?? '') as String,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: muted(context),
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: muted(context), fontSize: 14),
                   ),
                   const SizedBox(height: 10),
                   Row(

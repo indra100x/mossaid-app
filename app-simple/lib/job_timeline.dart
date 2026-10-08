@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'design_tokens.dart';
+import 'strings.dart';
+
 /// Job progress: Posted → Accepted → Done (or Cancelled).
 class JobTimeline extends StatelessWidget {
   const JobTimeline({super.key, required this.status});
@@ -7,7 +9,11 @@ class JobTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const steps = ['open', 'accepted', 'completed'];
-    const labels = ['Posted', 'Accepted', 'Done'];
+    final labels = [
+      Strings.t(context, 'tl_posted'),
+      Strings.t(context, 'tl_accepted'),
+      Strings.t(context, 'tl_done'),
+    ];
     const icons = [
       Icons.post_add_outlined,
       Icons.handshake_outlined,
@@ -19,13 +25,10 @@ class JobTimeline extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              Icon(
-                Icons.cancel_outlined,
-                color: muted(context),
-              ),
+              Icon(Icons.cancel_outlined, color: muted(context)),
               const SizedBox(width: 8),
               Text(
-                'This job was cancelled',
+                Strings.t(context, 'tl_cancelled'),
                 style: TextStyle(color: muted(context)),
               ),
             ],
@@ -54,9 +57,7 @@ class JobTimeline extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: i < idx
                           ? proTeal(context)
-                          : Theme.of(
-                              context,
-                            ).colorScheme.outlineVariant,
+                          : Theme.of(context).colorScheme.outlineVariant,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -99,11 +100,7 @@ class _StepDot extends StatelessWidget {
                 ? Border.all(color: proTeal(context), width: 2)
                 : null,
           ),
-          child: Icon(
-            done ? Icons.check : icon,
-            size: 18,
-            color: color,
-          ),
+          child: Icon(done ? Icons.check : icon, size: 18, color: color),
         ),
         const SizedBox(height: 4),
         Text(

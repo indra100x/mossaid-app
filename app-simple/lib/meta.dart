@@ -5,6 +5,7 @@ import 'api.dart';
 class MetaCache {
   static List<Map<String, dynamic>> trades = [];
   static List<String> cities = [];
+  static Map<String, String> citiesAr = {};
   static bool loaded = false;
 
   static Future<void> ensure(ApiClient api) async {
@@ -15,17 +16,28 @@ class MetaCache {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
       cities = ((m['cities'] as List?) ?? []).map((e) => '$e').toList();
+      citiesAr = ((m['cities_ar'] as Map?) ?? {}).map(
+        (k, v) => MapEntry('$k', '$v'),
+      );
     } catch (_) {
       // Offline: pickers fall back to free text.
     }
     loaded = true;
   }
 
-  static String label(String slug) {
+  static String label(String slug, {bool ar = false}) {
     for (final t in trades) {
-      if (t['slug'] == slug) return (t['label'] ?? slug) as String;
+      if (t['slug'] == slug) {
+        if (ar) return (t['label_ar'] ?? t['label'] ?? slug) as String;
+        return (t['label'] ?? slug) as String;
+      }
     }
     return slug;
+  }
+
+  static String cityLabel(String name, {bool ar = false}) {
+    if (ar) return citiesAr[name] ?? name;
+    return name;
   }
 }
 

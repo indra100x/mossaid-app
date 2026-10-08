@@ -11,6 +11,7 @@ class MetaController extends Controller
         return response()->json([
             'trades' => config('marketplace.trades'),
             'cities' => config('marketplace.cities'),
+            'cities_ar' => config('marketplace.cities_ar'),
         ]);
     }
 }
