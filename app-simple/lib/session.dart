@@ -49,6 +49,7 @@ class Session extends ChangeNotifier {
     required String password,
     required String role,
     String? city,
+    String? trade,
   }) async {
     try {
       final body = isLogin
@@ -59,6 +60,7 @@ class Session extends ChangeNotifier {
               password: password,
               role: role,
               city: city,
+              trade: trade,
             );
       api.token = body['token'] as String?;
       user = Map<String, dynamic>.from(body['user'] as Map);

@@ -15,12 +15,12 @@ void main() {
     expect(find.text('Mossaid'), findsOneWidget);
     expect(find.text('Login'), findsOneWidget);
     expect(find.text('Create account'), findsOneWidget);
-    expect(find.textContaining('1.0.1'), findsOneWidget);
+    expect(find.textContaining('1.0.2'), findsOneWidget);
 
     // Tapping login opens the auth screen in login mode.
     await tester.tap(find.text('Login'));
     await tester.pumpAndSettle();
-    expect(find.text('Mossaid — crafts marketplace'), findsOneWidget);
+    expect(find.text('Welcome back'), findsOneWidget);
   });
 
   test('ApiClient builds auth headers', () {

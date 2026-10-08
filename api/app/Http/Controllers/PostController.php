@@ -12,7 +12,7 @@ class PostController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $q = Post::with('user:id,name,trade,city')->orderByDesc('id');
+        $q = Post::with('user:id,name,trade,city')->withCount(['likes', 'comments'])->orderByDesc('id');
 
         if ($trade = $request->query('trade')) {
             $q->where('trade', $trade);
