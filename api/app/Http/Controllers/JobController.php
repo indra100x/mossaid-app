@@ -74,7 +74,7 @@ class JobController extends Controller
             $job->user_id, 'job.accepted',
             "{$user->name} accepted your job",
             "“{$job->title}” — chat is now open.",
-            ['job_id' => $job->id],
+            ['job_id' => $job->id, 'actor_name' => $user->name],
         );
 
         return response()->json($job->fresh());
@@ -92,7 +92,7 @@ class JobController extends Controller
                 $job->accepted_user_id, 'job.completed',
                 'Job marked completed',
                 "“{$job->title}” — the client closed the job.",
-                ['job_id' => $job->id],
+                ['job_id' => $job->id, 'actor_name' => $job->client->name],
             );
         }
 

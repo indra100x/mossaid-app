@@ -76,6 +76,7 @@ class MarketplacePlusTest extends TestCase
         $notifs = $this->as($clientToken)->getJson('/api/notifications')->assertOk()->json();
         $this->assertEquals(1, $notifs['unread_count']);
         $this->assertEquals('job.accepted', $notifs['data'][0]['type']);
+        $this->assertEquals('craftsman User', $notifs['data'][0]['data']['actor_name']);
 
         $this->as($clientToken)->postJson("/api/jobs/{$job['id']}/complete")->assertOk();
 

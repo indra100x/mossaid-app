@@ -44,7 +44,7 @@ class ReviewController extends Controller
             $craftsman->id, 'review.received',
             "New {$data['rating']}★ review",
             $request->user()->name.' reviewed your work.',
-            ['job_id' => $job->id, 'rating' => $data['rating']],
+            ['job_id' => $job->id, 'rating' => $data['rating'], 'actor_name' => $request->user()->name],
         );
 
         return response()->json($review, 201);

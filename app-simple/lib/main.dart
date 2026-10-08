@@ -3228,7 +3228,9 @@ class _CraftsmanProfileScreenState extends State<CraftsmanProfileScreen> {
     final count = ((c['rating_count'] as num?)?.toInt() ?? 0);
     return Scaffold(
       appBar: AppBar(
-        title: Text((c['name'] ?? Strings.t(context, 'role_craftsman')) as String),
+        title: Text(
+          (c['name'] ?? Strings.t(context, 'role_craftsman')) as String,
+        ),
         actions: const [ThemeToggleButton()],
       ),
       body: ListView(
@@ -3429,6 +3431,46 @@ class _ReviewDialogState extends State<ReviewDialog> {
 
 // ---------- Notifications ----------
 
+/// Localized (title, body) for a notification. The username stays exactly
+/// as the user wrote it; everything else follows the app language.
+/// Falls back to the server strings for old rows without `actor_name`.
+(String, String) _notifText(
+  BuildContext context,
+  String type,
+  Map<dynamic, dynamic> data,
+  String fallbackTitle,
+  String fallbackBody,
+) {
+  final actor = '${data['actor_name'] ?? ''}';
+  if (actor.isEmpty) return (fallbackTitle, fallbackBody);
+  switch (type) {
+    case 'job.accepted':
+      return (
+        Strings.t(context, 'nt_accepted_t', {'actor': actor}),
+        Strings.t(context, 'nt_accepted_b'),
+      );
+    case 'message.received':
+      return (
+        Strings.t(context, 'nt_message_t', {'actor': actor}),
+        fallbackBody, // the user's own words — keep as written
+      );
+    case 'job.completed':
+      return (
+        Strings.t(context, 'nt_completed_t'),
+        Strings.t(context, 'nt_completed_b', {'actor': actor}),
+      );
+    case 'review.received':
+      return (
+        Strings.t(context, 'nt_review_t', {
+          'rating': '${data['rating'] ?? ''}',
+        }),
+        Strings.t(context, 'nt_review_b', {'actor': actor}),
+      );
+    default:
+      return (fallbackTitle, fallbackBody);
+  }
+}
+
 class NotificationsTab extends StatefulWidget {
   const NotificationsTab({
     super.key,
@@ -3527,8 +3569,15 @@ class _NotificationsTabState extends State<NotificationsTab> {
                     itemBuilder: (_, i) {
                       final n = items[i] as Map<String, dynamic>;
                       final unread = n['read_at'] == null;
-                      final jobId =
-                          ((n['data'] as Map?) ?? {})['job_id'] as num?;
+                      final payload = (n['data'] as Map?) ?? const {};
+                      final jobId = payload['job_id'] as num?;
+                      final text = _notifText(
+                        context,
+                        (n['type'] ?? '') as String,
+                        payload,
+                        '${n['title'] ?? ''}',
+                        '${n['body'] ?? ''}',
+                      );
                       return Card(
                         color: unread
                             ? proTeal(context).withValues(alpha: 0.08)
@@ -3540,7 +3589,7 @@ class _NotificationsTabState extends State<NotificationsTab> {
                             color: proTeal(context),
                           ),
                           title: Text(
-                            n['title'] ?? '',
+                            text.$1,
                             style: TextStyle(
                               fontWeight: unread
                                   ? FontWeight.bold
@@ -3548,7 +3597,7 @@ class _NotificationsTabState extends State<NotificationsTab> {
                             ),
                           ),
                           subtitle: Text(
-                            '${n['body'] ?? ''}\n${shortTime(n['created_at'] as String?)}',
+                            '${text.$2}\n${shortTime(n['created_at'] as String?)}',
                           ),
                           isThreeLine: true,
                           trailing: unread

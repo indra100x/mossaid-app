@@ -172,6 +172,13 @@ class Strings {
     // Notifications
     'alerts_title': 'Alerts',
     'mark_all_read': 'Mark all read',
+    'nt_accepted_t': '{actor} accepted your job',
+    'nt_accepted_b': 'Chat is now open — talk it through 🤝',
+    'nt_message_t': 'New message from {actor}',
+    'nt_completed_t': 'Job completed',
+    'nt_completed_b': '{actor} closed the job',
+    'nt_review_t': 'New {rating}★ review',
+    'nt_review_b': '{actor} reviewed your work',
     'no_alerts': 'Nothing yet — accepts and messages land here.',
     // Account
     'edit_profile': 'Edit profile',
@@ -277,11 +284,11 @@ class Strings {
     'comment_hint': 'أضف تعليقاً…',
     // Jobs
     'search_jobs': 'ابحث في الأعمال…',
-    'status_all': 'الكل',
-    'status_open': 'مفتوح',
-    'status_accepted': 'مقبول',
-    'status_completed': 'مكتمل',
-    'status_cancelled': 'ملغي',
+    'status_all': 'قاع',
+    'status_open': 'جدد',
+    'status_accepted': 'مقبولين',
+    'status_completed': 'كاملين',
+    'status_cancelled': 'ملغيين',
     'post_job_btn': 'انشر طلب عمل',
     'no_jobs': 'لا أعمال بعد — أيها الزبائن، انشروا أول طلب! 👆',
     // Post form
@@ -336,6 +343,13 @@ class Strings {
     // Notifications
     'alerts_title': 'التنبيهات',
     'mark_all_read': 'تعليم الكل كمقروء',
+    'nt_accepted_t': '{actor} قبل طلب العمل',
+    'nt_accepted_b': 'المحادثة انفتحت — تفاهم معاه 🤝',
+    'nt_message_t': 'رسالة جديدة من {actor}',
+    'nt_completed_t': 'تكمل العمل',
+    'nt_completed_b': '{actor} أعلن نهاية الخدمة',
+    'nt_review_t': 'تقييم جديد {rating}⭐',
+    'nt_review_b': '{actor} قيّم الخدمة تاعك',
     'no_alerts': 'لا شيء بعد — القبول والرسائل تصل هنا.',
     // Account
     'edit_profile': 'تعديل الحساب',

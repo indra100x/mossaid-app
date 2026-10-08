@@ -49,7 +49,7 @@ class MessageController extends Controller
                 $otherId, 'message.received',
                 "New message from {$request->user()->name}",
                 mb_substr($data['body'], 0, 120),
-                ['job_id' => $job->id],
+                ['job_id' => $job->id, 'actor_name' => $request->user()->name],
             );
         }
 
