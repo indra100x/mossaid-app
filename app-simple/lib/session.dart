@@ -41,7 +41,12 @@ class Session extends ChangeNotifier {
       final body = isLogin
           ? await api.login(email, password)
           : await api.register(
-              name: name, email: email, password: password, role: role, city: city);
+              name: name,
+              email: email,
+              password: password,
+              role: role,
+              city: city,
+            );
       api.token = body['token'] as String?;
       user = Map<String, dynamic>.from(body['user'] as Map);
       final prefs = await SharedPreferences.getInstance();
@@ -50,6 +55,8 @@ class Session extends ChangeNotifier {
       return null;
     } on ApiException catch (e) {
       return e.message;
+    } catch (e) {
+      return 'Could not reach the server: $e';
     }
   }
 

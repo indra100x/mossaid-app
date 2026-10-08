@@ -13,7 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // API-only app: never redirect to a login page (there is no web
+        // `login` route). Always answer 401 JSON instead — otherwise any
+        // request without `Accept: application/json` blows up with a 500
+        // "Route [login] not defined" instead of a clean 401.
+        $middleware->redirectGuestsTo(fn (Request $request) => null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
