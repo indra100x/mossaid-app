@@ -30,17 +30,54 @@ class MossaidSimple extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: Listenable.merge([session, theme]),
-      builder: (_, __) => MaterialApp(
-        title: 'Mossaid',
-        theme: buildTheme(),
-        darkTheme: buildDarkTheme(),
-        themeMode: theme.mode,
-        home: !session.loaded
-            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
-            : session.loggedIn
-            ? HomeScreen(session: session, api: api, theme: theme)
-            : LandingScreen(session: session, api: api),
+      builder: (_, __) => AppThemeScope(
+        theme: theme,
+        child: MaterialApp(
+          title: 'Mossaid',
+          theme: buildTheme(),
+          darkTheme: buildDarkTheme(),
+          themeMode: theme.mode,
+          home: !session.loaded
+              ? const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                )
+              : session.loggedIn
+              ? HomeScreen(session: session, api: api, theme: theme)
+              : LandingScreen(session: session, api: api),
+        ),
       ),
+    );
+  }
+}
+
+/// Makes the [AppTheme] reachable from any page for the mode toggle.
+class AppThemeScope extends InheritedWidget {
+  const AppThemeScope({super.key, required this.theme, required super.child});
+  final AppTheme theme;
+
+  static AppTheme of(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<AppThemeScope>();
+    assert(scope != null, 'AppThemeScope not found above.');
+    return scope!.theme;
+  }
+
+  @override
+  bool updateShouldNotify(AppThemeScope oldWidget) => theme != oldWidget.theme;
+}
+
+/// Moon/sun button — drop into any AppBar `actions` (or overlay).
+class ThemeToggleButton extends StatelessWidget {
+  const ThemeToggleButton({super.key, this.color});
+  final Color? color;
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppThemeScope.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return IconButton(
+      tooltip: dark ? 'Light mode' : 'Dark mode',
+      color: color,
+      icon: Icon(dark ? Icons.wb_sunny_outlined : Icons.dark_mode_outlined),
+      onPressed: () => theme.toggle(context),
     );
   }
 }
@@ -569,152 +606,179 @@ class _LandingScreenState extends State<LandingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: [
-          // Brand header.
-          Expanded(
-            flex: 5,
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF14B8A6), Color(0xFF0B4F48)],
-                ),
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(32),
-                ),
-              ),
-              child: const SafeArea(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    LogoMark(size: 92),
-                    SizedBox(height: 12),
-                    Text(
-                      'Mossaid',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
+          Column(
+            children: [
+              // Brand header.
+              Expanded(
+                flex: 5,
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF14B8A6), Color(0xFF0B4F48)],
                     ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Trusted craftsmen, one tap away',
-                      style: TextStyle(color: Color(0xD9FFFFFF), fontSize: 15),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Actions sheet.
-          Expanded(
-            flex: 6,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(28, 20, 28, 12),
-              child: Column(
-                children: [
-                  const Text(
-                    'Clients post jobs · Craftsmen showcase work · Chat opens after accept.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
-                  const SizedBox(height: 14),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _LandingPerk(
-                        icon: Icons.search_outlined,
-                        label: 'Discover',
-                      ),
-                      _LandingPerk(
-                        icon: Icons.chat_bubble_outline,
-                        label: 'Chat on deal',
-                      ),
-                      _LandingPerk(
-                        icon: Icons.star_outline,
-                        label: 'Rated pros',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => _go(true),
-                      child: const Text(
-                        'Login',
-                        style: TextStyle(fontSize: 17),
-                      ),
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(32),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () => _go(false),
-                      child: const Text(
-                        'Create account',
-                        style: TextStyle(fontSize: 17),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Server reachability — answers "is the app stuck or is it the network?"
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: softBg(context),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                  child: const SafeArea(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (checking)
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        else
-                          Icon(
-                            serverOk == true ? Icons.wifi : Icons.wifi_off,
-                            size: 18,
-                            color: serverOk == true ? Colors.green : Colors.red,
-                          ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            checking
-                                ? 'Checking server…'
-                                : serverOk == true
-                                ? 'Server reachable ✓'
-                                : 'Server NOT reachable — check Wi-Fi / server',
-                            style: const TextStyle(fontSize: 13),
+                        LogoMark(size: 92),
+                        SizedBox(height: 12),
+                        Text(
+                          'Mossaid',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.refresh, size: 18),
-                          tooltip: 'Recheck',
-                          onPressed: _check,
+                        SizedBox(height: 4),
+                        Text(
+                          'Trusted craftsmen, one tap away',
+                          style: TextStyle(
+                            color: Color(0xD9FFFFFF),
+                            fontSize: 15,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'v$kAppVersion',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                ],
+                ),
               ),
+              // Actions sheet.
+              Expanded(
+                flex: 6,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(28, 20, 28, 12),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Clients post jobs · Craftsmen showcase work · Chat opens after accept.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey, fontSize: 13),
+                      ),
+                      const SizedBox(height: 14),
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _LandingPerk(
+                            icon: Icons.search_outlined,
+                            label: 'Discover',
+                          ),
+                          _LandingPerk(
+                            icon: Icons.chat_bubble_outline,
+                            label: 'Chat on deal',
+                          ),
+                          _LandingPerk(
+                            icon: Icons.star_outline,
+                            label: 'Rated pros',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: () => _go(true),
+                          child: const Text(
+                            'Login',
+                            style: TextStyle(fontSize: 17),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: () => _go(false),
+                          child: const Text(
+                            'Create account',
+                            style: TextStyle(fontSize: 17),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: softBg(context),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (checking)
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            else
+                              Icon(
+                                serverOk == true
+                                    ? Icons.wifi
+                                    : Icons.wifi_off,
+                                size: 18,
+                                color: serverOk == true
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                checking
+                                    ? 'Checking server…'
+                                    : serverOk == true
+                                    ? 'Server reachable ✓'
+                                    : 'Server NOT reachable — check Wi-Fi / server',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.refresh, size: 18),
+                              tooltip: 'Recheck',
+                              onPressed: _check,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'v$kAppVersion',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Mode toggle floats over the brand header (white icon).
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 6,
+            right: 8,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.22),
+                shape: BoxShape.circle,
+              ),
+              child: const ThemeToggleButton(color: Colors.white),
             ),
           ),
         ],
@@ -804,7 +868,10 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(isLogin ? 'Welcome back' : 'Join Mossaid')),
+      appBar: AppBar(
+        title: Text(isLogin ? 'Welcome back' : 'Join Mossaid'),
+        actions: const [ThemeToggleButton()],
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
@@ -1105,19 +1172,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            tooltip: Theme.of(context).brightness == Brightness.dark
-                ? 'Light mode'
-                : 'Dark mode',
-            icon: Icon(
-              Theme.of(context).brightness == Brightness.dark
-                  ? Icons.wb_sunny_outlined
-                  : Icons.dark_mode_outlined,
-            ),
-            onPressed: () => widget.theme.toggle(context),
-          ),
-        ],
+        actions: const [ThemeToggleButton()],
       ),
       body: pages[tab],
       bottomNavigationBar: NavigationBar(
@@ -1431,7 +1486,10 @@ class _PostFormScreenState extends State<PostFormScreen> {
         .toList();
     final cityOptions = MetaCache.cities;
     return Scaffold(
-      appBar: AppBar(title: const Text('Showcase your work')),
+      appBar: AppBar(
+        title: const Text('Showcase your work'),
+        actions: const [ThemeToggleButton()],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -1697,7 +1755,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Widget build(BuildContext context) {
     if (post == null) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(actions: const [ThemeToggleButton()]),
         body: Center(
           child: error != null
               ? Padding(
@@ -1727,7 +1785,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final rating = ((u['rating_avg'] as num?)?.toDouble() ?? 0);
     final ratingCount = ((u['rating_count'] as num?)?.toInt() ?? 0);
     return Scaffold(
-      appBar: AppBar(title: Text(post!['title'] ?? 'Post')),
+      appBar: AppBar(
+        title: Text(post!['title'] ?? 'Post'),
+        actions: const [ThemeToggleButton()],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
@@ -2259,7 +2320,10 @@ class _JobFormScreenState extends State<JobFormScreen> {
         .toList();
     final cityOptions = MetaCache.cities;
     return Scaffold(
-      appBar: AppBar(title: const Text('Describe your job')),
+      appBar: AppBar(
+        title: const Text('Describe your job'),
+        actions: const [ThemeToggleButton()],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -2551,7 +2615,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   Widget build(BuildContext context) {
     if (job == null) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(actions: const [ThemeToggleButton()]),
         body: Center(
           child: notice != null
               ? Padding(
@@ -2577,7 +2641,10 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     final isCraft = widget.session.isCraftsman;
     final chatOpen = st == 'accepted' || st == 'completed';
     return Scaffold(
-      appBar: AppBar(title: Text(job!['title'] ?? 'Job')),
+      appBar: AppBar(
+        title: Text(job!['title'] ?? 'Job'),
+        actions: const [ThemeToggleButton()],
+      ),
       body: Column(
         children: [
           JobTimeline(status: st),
@@ -3016,7 +3083,7 @@ class _CraftsmanProfileScreenState extends State<CraftsmanProfileScreen> {
   Widget build(BuildContext context) {
     if (data == null) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(actions: const [ThemeToggleButton()]),
         body: Center(
           child: error != null
               ? ErrorRetry(message: error!, onRetry: _load)
@@ -3029,7 +3096,10 @@ class _CraftsmanProfileScreenState extends State<CraftsmanProfileScreen> {
     final rating = ((c['rating_avg'] as num?)?.toDouble() ?? 0);
     final count = ((c['rating_count'] as num?)?.toInt() ?? 0);
     return Scaffold(
-      appBar: AppBar(title: Text((c['name'] ?? 'Craftsman') as String)),
+      appBar: AppBar(
+        title: Text((c['name'] ?? 'Craftsman') as String),
+        actions: const [ThemeToggleButton()],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(14),
         children: [
@@ -3461,7 +3531,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         trade!,
     ];
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit profile')),
+      appBar: AppBar(
+        title: const Text('Edit profile'),
+        actions: const [ThemeToggleButton()],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -3625,7 +3698,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Reset password')),
+      appBar: AppBar(
+        title: const Text('Reset password'),
+        actions: const [ThemeToggleButton()],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
