@@ -41,3 +41,4 @@ pgdata/
 Thumbs.db
 
 # Keep alembic versions tracked — only ignore caches
+.env.prod

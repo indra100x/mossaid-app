@@ -21,12 +21,21 @@ docker compose up --build
 ## Run it (prod — nginx + PHP-FPM, one container)
 
 ```bash
-cd api && php artisan key:generate --show   # copy output
-export APP_KEY="base64:..."
-docker compose -f docker-compose.prod.yml up -d --build
-curl http://localhost/api/health
-# API_PORT=8080 docker compose -f docker-compose.prod.yml up -d  # if port 80 taken
+# First time: key + port live in .env.prod (gitignored, template below)
+printf 'APP_KEY=%s\nAPI_PORT=8090\n' "$(cd api && php artisan key:generate --show)" > .env.prod
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p mossaid-prod up -d --build
+curl http://192.168.1.8:8090/api/health
 # DB_MIGRATE=false  # skip migrations on start (default true)
+```
+
+Prod runs as its own project (`-p mossaid-prod`: own containers, own DB
+volume) so it lives side-by-side with dev:
+dev API → `:8000`, prod API → `:8090`.
+The phone APK is built against prod:
+
+```bash
+cd app-simple
+flutter build apk --release --dart-define=API_URL=http://192.168.1.8:8090/api
 ```
 
 Or run the API locally (needs local Postgres):
