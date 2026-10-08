@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'design_tokens.dart';
-
 /// Job progress: Posted → Accepted → Done (or Cancelled).
 class JobTimeline extends StatelessWidget {
   const JobTimeline({super.key, required this.status});
@@ -15,16 +14,19 @@ class JobTimeline extends StatelessWidget {
       Icons.check_circle_outline,
     ];
     if (status == 'cancelled') {
-      return const Card(
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(14),
+          padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              Icon(Icons.cancel_outlined, color: Colors.grey),
-              SizedBox(width: 8),
+              Icon(
+                Icons.cancel_outlined,
+                color: muted(context),
+              ),
+              const SizedBox(width: 8),
               Text(
                 'This job was cancelled',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: muted(context)),
               ),
             ],
           ),
@@ -50,7 +52,11 @@ class JobTimeline extends StatelessWidget {
                     height: 2,
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
-                      color: i < idx ? kTeal : Colors.grey.shade200,
+                      color: i < idx
+                          ? proTeal(context)
+                          : Theme.of(
+                              context,
+                            ).colorScheme.outlineVariant,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -76,18 +82,22 @@ class _StepDot extends StatelessWidget {
   final String label;
   @override
   Widget build(BuildContext context) {
-    final color = done || current ? kTeal : Colors.grey.shade400;
+    final scheme = Theme.of(context).colorScheme;
+    final active = done || current;
+    final color = active ? proTeal(context) : scheme.onSurfaceVariant;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: done || current
-                ? kTeal.withValues(alpha: 0.12)
-                : Colors.grey.shade100,
+            color: active
+                ? proTeal(context).withValues(alpha: 0.12)
+                : scheme.surfaceContainerHighest,
             shape: BoxShape.circle,
-            border: current ? Border.all(color: kTeal, width: 2) : null,
+            border: current
+                ? Border.all(color: proTeal(context), width: 2)
+                : null,
           ),
           child: Icon(
             done ? Icons.check : icon,
@@ -101,7 +111,7 @@ class _StepDot extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: current ? FontWeight.w700 : FontWeight.w500,
-            color: done || current ? kInk : Colors.grey.shade500,
+            color: active ? scheme.onSurface : scheme.onSurfaceVariant,
           ),
         ),
       ],

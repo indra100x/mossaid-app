@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'api.dart';
+import 'app_theme.dart';
 import 'design_tokens.dart';
 import 'job_timeline.dart';
 import 'meta.dart';
@@ -9,7 +10,39 @@ import 'session.dart';
 
 void main() {
   final api = ApiClient();
-  runApp(MossaidSimple(session: Session(api)..load(), api: api));
+  final session = Session(api)..load();
+  final theme = AppTheme()..load();
+  runApp(MossaidSimple(session: session, api: api, theme: theme));
+}
+
+class MossaidSimple extends StatelessWidget {
+  const MossaidSimple({
+    super.key,
+    required this.session,
+    required this.api,
+    required this.theme,
+  });
+  final Session session;
+  final ApiClient api;
+  final AppTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([session, theme]),
+      builder: (_, __) => MaterialApp(
+        title: 'Mossaid',
+        theme: buildTheme(),
+        darkTheme: buildDarkTheme(),
+        themeMode: theme.mode,
+        home: !session.loaded
+            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+            : session.loggedIn
+            ? HomeScreen(session: session, api: api, theme: theme)
+            : LandingScreen(session: session, api: api),
+      ),
+    );
+  }
 }
 
 ThemeData buildTheme() {
@@ -146,6 +179,129 @@ ThemeData buildTheme() {
   );
 }
 
+/// Dark twin of [buildTheme]: same Jakarta type and shapes, surfaces and
+/// text remapped so every screen stays readable without touching widgets.
+ThemeData buildDarkTheme() {
+  const bg = Color(0xFF0F1513);
+  final scheme = ColorScheme.fromSeed(
+    seedColor: kTealBright,
+    secondary: kAmber,
+    brightness: Brightness.dark,
+    surface: const Color(0xFF151C1A),
+  );
+  final baseText = Typography.englishLike2021.apply(
+    fontFamily: 'Jakarta',
+    bodyColor: Colors.white,
+    displayColor: Colors.white,
+  );
+  return ThemeData(
+    colorScheme: scheme,
+    scaffoldBackgroundColor: bg,
+    useMaterial3: true,
+    fontFamily: 'Jakarta',
+    textTheme: baseText.copyWith(
+      titleLarge: baseText.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+      titleMedium: baseText.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      bodySmall: baseText.bodySmall?.copyWith(color: Colors.white70),
+    ),
+    appBarTheme: AppBarTheme(
+      backgroundColor: bg,
+      foregroundColor: Colors.white,
+      elevation: 0,
+      scrolledUnderElevation: 1,
+      titleTextStyle: const TextStyle(
+        fontFamily: 'Jakarta',
+        fontSize: 19,
+        fontWeight: FontWeight.w700,
+        color: Colors.white,
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: scheme.surfaceContainerHighest,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 15,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: scheme.outlineVariant),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: scheme.outlineVariant),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(16)),
+        borderSide: BorderSide(color: scheme.primary, width: 1.6),
+      ),
+      hintStyle: const TextStyle(color: Colors.white54, fontSize: 14),
+    ),
+    cardTheme: CardThemeData(
+      elevation: 0,
+      color: scheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      shadowColor: Colors.black.withValues(alpha: 0.4),
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        textStyle: const TextStyle(
+          fontFamily: 'Jakarta',
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 22),
+        elevation: 0,
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        textStyle: const TextStyle(
+          fontFamily: 'Jakarta',
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 22),
+      ),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: scheme.surfaceContainerHighest,
+      labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: scheme.surfaceContainer,
+      labelTextStyle: WidgetStateProperty.all(
+        const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+    ),
+    dialogTheme: const DialogThemeData(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(24)),
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+    ),
+  );
+}
+
 /// Logo mark mirroring the launcher icon.
 class LogoMark extends StatelessWidget {
   const LogoMark({super.key, this.size = 110});
@@ -202,7 +358,7 @@ class TradeChip extends StatelessWidget {
   final String trade;
   @override
   Widget build(BuildContext context) {
-    final c = tradeColor(trade);
+    final c = vivid(context, tradeColor(trade));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -222,10 +378,11 @@ class StatusChip extends StatelessWidget {
   final String status;
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final map = {
-      'open': Colors.blue,
-      'accepted': Colors.orange.shade800,
-      'completed': Colors.green.shade700,
+      'open': dark ? Colors.blue.shade300 : Colors.blue,
+      'accepted': dark ? Colors.orange.shade300 : Colors.orange.shade800,
+      'completed': dark ? Colors.green.shade300 : Colors.green.shade700,
       'cancelled': Colors.grey,
     };
     final c = map[status] ?? Colors.grey;
@@ -259,7 +416,7 @@ class ErrorRetry extends StatelessWidget {
             Icon(
               Icons.cloud_off_outlined,
               size: 48,
-              color: Colors.grey.shade400,
+              color: muted(context),
             ),
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center),
@@ -284,12 +441,13 @@ class InitialAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initial = name.isEmpty ? '?' : name.substring(0, 1).toUpperCase();
+    final c = vivid(context, tradeColor(name));
     return CircleAvatar(
       radius: radius,
-      backgroundColor: tradeColor(name).withValues(alpha: 0.15),
+      backgroundColor: c.withValues(alpha: 0.15),
       child: Text(
         initial,
-        style: TextStyle(color: tradeColor(name), fontWeight: FontWeight.bold),
+        style: TextStyle(color: c, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -351,38 +509,16 @@ class NetImage extends StatelessWidget {
             ? child
             : Container(
                 height: height,
-                color: Colors.grey.shade200,
+                color: softBg(context),
                 child: const Center(
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
         errorBuilder: (c, e, s) => Container(
           height: 90,
-          color: Colors.grey.shade100,
+          color: softBg(context),
           child: const Center(child: Icon(Icons.broken_image_outlined)),
         ),
-      ),
-    );
-  }
-}
-
-class MossaidSimple extends StatelessWidget {
-  const MossaidSimple({super.key, required this.session, required this.api});
-  final Session session;
-  final ApiClient api;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: session,
-      builder: (_, __) => MaterialApp(
-        title: 'Mossaid',
-        theme: buildTheme(),
-        home: !session.loaded
-            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
-            : session.loggedIn
-            ? HomeScreen(session: session, api: api)
-            : LandingScreen(session: session, api: api),
       ),
     );
   }
@@ -535,7 +671,7 @@ class _LandingScreenState extends State<LandingScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: softBg(context),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -862,9 +998,15 @@ class _AuthScreenState extends State<AuthScreen> {
 // ---------- Home ----------
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.session, required this.api});
+  const HomeScreen({
+    super.key,
+    required this.session,
+    required this.api,
+    required this.theme,
+  });
   final Session session;
   final ApiClient api;
+  final AppTheme theme;
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -913,7 +1055,11 @@ class _HomeScreenState extends State<HomeScreen> {
               session: widget.session,
               onRead: _refreshUnread,
             ),
-            AccountTab(session: widget.session, api: widget.api),
+            AccountTab(
+              session: widget.session,
+              api: widget.api,
+              theme: widget.theme,
+            ),
           ]
         : [
             PostsTab(api: widget.api, isCraftsman: false),
@@ -927,7 +1073,11 @@ class _HomeScreenState extends State<HomeScreen> {
               session: widget.session,
               onRead: _refreshUnread,
             ),
-            AccountTab(session: widget.session, api: widget.api),
+            AccountTab(
+              session: widget.session,
+              api: widget.api,
+              theme: widget.theme,
+            ),
           ];
     const titles = ['Discover', 'Jobs', 'Alerts', 'Account'];
     const craftTitles = ['My work', 'Requests', 'Alerts', 'Account'];
@@ -951,10 +1101,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             Text(
               labels[tab],
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 13, color: muted(context)),
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            tooltip: Theme.of(context).brightness == Brightness.dark
+                ? 'Light mode'
+                : 'Dark mode',
+            icon: Icon(
+              Theme.of(context).brightness == Brightness.dark
+                  ? Icons.wb_sunny_outlined
+                  : Icons.dark_mode_outlined,
+            ),
+            onPressed: () => widget.theme.toggle(context),
+          ),
+        ],
       ),
       body: pages[tab],
       bottomNavigationBar: NavigationBar(
@@ -1326,7 +1489,7 @@ class _PostFormScreenState extends State<PostFormScreen> {
                         width: 96,
                         height: 96,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: softBg(context),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.grey.shade300),
                         ),
@@ -1588,7 +1751,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: softBg(context),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -1694,7 +1857,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
+                        color: softBg(context),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -1946,7 +2109,7 @@ class _JobsTabState extends State<JobsTab> {
                                   (j['description'] ?? '') as String,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: Colors.grey.shade700),
+                                  style: TextStyle(color: muted(context)),
                                 ),
                                 if ((j['cover_photo'] ?? '') != '') ...[
                                   const SizedBox(height: 10),
@@ -1966,12 +2129,12 @@ class _JobsTabState extends State<JobsTab> {
                                       Icon(
                                         Icons.place_outlined,
                                         size: 14,
-                                        color: Colors.grey.shade500,
+                                        color: muted(context),
                                       ),
                                       Text(
                                         j['city'],
                                         style: TextStyle(
-                                          color: Colors.grey.shade600,
+                                          color: muted(context),
                                           fontSize: 13,
                                         ),
                                       ),
@@ -1980,15 +2143,15 @@ class _JobsTabState extends State<JobsTab> {
                                     if (j['budget'] != null)
                                       Text(
                                         '${j['budget']} DZD',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          color: kTeal,
+                                          color: proTeal(context),
                                         ),
                                       ),
                                     const SizedBox(width: 4),
                                     Icon(
                                       Icons.chevron_right,
-                                      color: Colors.grey.shade400,
+                                      color: muted(context),
                                     ),
                                   ],
                                 ),
@@ -2111,7 +2274,7 @@ class _JobFormScreenState extends State<JobFormScreen> {
                 child: Container(
                   height: 140,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: softBg(context),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey.shade300),
                   ),
@@ -2433,9 +2596,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                       if (job!['budget'] != null)
                         Text(
                           '${job!['budget']} DZD',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: kTeal,
+                            color: proTeal(context),
                             fontSize: 16,
                           ),
                         ),
@@ -2450,12 +2613,12 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                         Icon(
                           Icons.place_outlined,
                           size: 14,
-                          color: Colors.grey.shade500,
+                          color: muted(context),
                         ),
                         const SizedBox(width: 2),
                         Text(
                           job!['city'],
-                          style: TextStyle(color: Colors.grey.shade600),
+                          style: TextStyle(color: muted(context)),
                         ),
                       ],
                     ),
@@ -2557,7 +2720,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: mine ? kTeal : Colors.grey.shade200,
+                            color: mine ? kTeal : softBg(context),
                             borderRadius: BorderRadius.only(
                               topLeft: const Radius.circular(16),
                               topRight: const Radius.circular(16),
@@ -2577,13 +2740,15 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.grey.shade700,
+                                    color: muted(context),
                                   ),
                                 ),
                               Text(
                                 m['body'] ?? '',
                                 style: TextStyle(
-                                  color: mine ? Colors.white : Colors.black87,
+                                  color: mine
+ ? Colors.white
+ : Theme.of(context).colorScheme.onSurface,
                                   fontSize: 15,
                                 ),
                               ),
@@ -2593,7 +2758,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                                   fontSize: 10,
                                   color: mine
                                       ? Colors.white70
-                                      : Colors.grey.shade500,
+                                      : muted(context),
                                 ),
                               ),
                             ],
@@ -2651,9 +2816,15 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
 }
 
 class AccountTab extends StatelessWidget {
-  const AccountTab({super.key, required this.session, required this.api});
+  const AccountTab({
+    super.key,
+    required this.session,
+    required this.api,
+    required this.theme,
+  });
   final Session session;
   final ApiClient api;
+  final AppTheme theme;
   @override
   Widget build(BuildContext context) {
     final u = session.user ?? {};
@@ -2682,7 +2853,7 @@ class AccountTab extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         u['email'] ?? '',
-                        style: TextStyle(color: Colors.grey.shade600),
+                        style: TextStyle(color: muted(context)),
                       ),
                       const SizedBox(height: 6),
                       Row(
@@ -2693,12 +2864,12 @@ class AccountTab extends StatelessWidget {
                             Icon(
                               Icons.place_outlined,
                               size: 14,
-                              color: Colors.grey.shade500,
+                              color: muted(context),
                             ),
                             Text(
                               u['city'],
                               style: TextStyle(
-                                color: Colors.grey.shade600,
+                                color: muted(context),
                                 fontSize: 13,
                               ),
                             ),
@@ -2715,7 +2886,7 @@ class AccountTab extends StatelessWidget {
         if (isCraft && (u['trade'] ?? '') != '')
           Card(
             child: ListTile(
-              leading: const Icon(Icons.handyman_outlined, color: kTeal),
+              leading: Icon(Icons.handyman_outlined, color: proTeal(context)),
               title: const Text('My trade'),
               subtitle: Text(u['trade']),
             ),
@@ -2724,7 +2895,7 @@ class AccountTab extends StatelessWidget {
           child: Column(
             children: [
               ListTile(
-                leading: const Icon(Icons.edit_outlined, color: kTeal),
+                leading: Icon(Icons.edit_outlined, color: proTeal(context)),
                 title: const Text('Edit profile'),
                 subtitle: const Text('Name, phone, trade, city, bio'),
                 trailing: const Icon(Icons.chevron_right),
@@ -2741,7 +2912,7 @@ class AccountTab extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.work_outline, color: kTeal),
+                leading: Icon(Icons.work_outline, color: proTeal(context)),
                 title: const Text('My jobs'),
                 subtitle: Text(
                   isCraft
@@ -2750,13 +2921,29 @@ class AccountTab extends StatelessWidget {
                 ),
               ),
               ListTile(
-                leading: const Icon(Icons.store_outlined, color: kTeal),
+                leading: Icon(Icons.store_outlined, color: proTeal(context)),
                 title: const Text('Marketplace'),
                 subtitle: Text(
                   isCraft
                       ? 'Your portfolio posts live under Posts'
                       : 'Browse craftsmen under Posts',
                 ),
+              ),
+              ListTile(
+                leading: Icon(
+                  Theme.of(context).brightness == Brightness.dark
+                      ? Icons.wb_sunny_outlined
+                      : Icons.dark_mode_outlined,
+                  color: proTeal(context),
+                ),
+                title: const Text('Appearance'),
+                subtitle: Text(
+                  Theme.of(context).brightness == Brightness.dark
+                      ? 'Dark mode — tap for light'
+                      : 'Light mode — tap for dark',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => theme.toggle(context),
               ),
             ],
           ),
@@ -2774,7 +2961,10 @@ class AccountTab extends StatelessWidget {
         Center(
           child: Text(
             'Mossaid v$kAppVersion',
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12,
+            ),
           ),
         ),
       ],
@@ -2867,7 +3057,7 @@ class _CraftsmanProfileScreenState extends State<CraftsmanProfileScreen> {
                         if ((c['city'] ?? '') != '')
                           Text(
                             c['city'],
-                            style: TextStyle(color: Colors.grey.shade600),
+                            style: TextStyle(color: muted(context)),
                           ),
                         const SizedBox(height: 4),
                         Row(
@@ -3146,12 +3336,12 @@ class _NotificationsTabState extends State<NotificationsTab> {
                       final jobId =
                           ((n['data'] as Map?) ?? {})['job_id'] as num?;
                       return Card(
-                        color: unread ? Colors.teal.shade50 : null,
+                        color: unread ? proTeal(context).withValues(alpha: 0.08) : null,
                         child: ListTile(
                           leading: Icon(
                             _icons[(n['type'] ?? '') as String] ??
                                 Icons.notifications_outlined,
-                            color: kTeal,
+                            color: proTeal(context),
                           ),
                           title: Text(
                             n['title'] ?? '',
@@ -3169,8 +3359,8 @@ class _NotificationsTabState extends State<NotificationsTab> {
                               ? Container(
                                   width: 10,
                                   height: 10,
-                                  decoration: const BoxDecoration(
-                                    color: kTeal,
+                                  decoration: BoxDecoration(
+                                    color: proTeal(context),
                                     shape: BoxShape.circle,
                                   ),
                                 )
@@ -3454,7 +3644,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.teal.shade50,
+                    color: proTeal(context).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(info!),
@@ -3538,14 +3728,14 @@ class PostCard extends StatelessWidget {
                         ? child
                         : Container(
                             height: 190,
-                            color: Colors.grey.shade200,
+                            color: softBg(context),
                             child: const Center(
                               child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                           ),
                     errorBuilder: (c, e, s) => Container(
                       height: 120,
-                      color: Colors.grey.shade100,
+                      color: softBg(context),
                       child: const Center(
                         child: Icon(Icons.broken_image_outlined),
                       ),
@@ -3697,7 +3887,7 @@ class PostCard extends StatelessWidget {
                                     '${u['name'] ?? ''}${(p['city'] ?? '') != '' ? ' · ${p['city']}' : ''}',
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      color: Colors.grey.shade600,
+                                      color: muted(context),
                                       fontSize: 13,
                                     ),
                                   ),
@@ -3708,7 +3898,7 @@ class PostCard extends StatelessWidget {
                                   Text(
                                     ' ($ratingCount)',
                                     style: TextStyle(
-                                      color: Colors.grey.shade600,
+                                      color: muted(context),
                                       fontSize: 12,
                                     ),
                                   ),
@@ -3726,7 +3916,7 @@ class PostCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Colors.grey.shade700,
+                      color: muted(context),
                       fontSize: 14,
                     ),
                   ),
@@ -3747,7 +3937,7 @@ class PostCard extends StatelessWidget {
                       Icon(
                         Icons.chat_bubble_outline,
                         size: 16,
-                        color: Colors.grey.shade500,
+                        color: muted(context),
                       ),
                       const SizedBox(width: 4),
                       Text('$commentCount'),
@@ -3764,9 +3954,9 @@ class PostCard extends StatelessWidget {
                           ),
                           child: Text(
                             '${p['price_hint']} DZD',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w800,
-                              color: kTeal,
+                              color: proTeal(context),
                             ),
                           ),
                         ),
@@ -3806,7 +3996,7 @@ class _LandingPerk extends StatelessWidget {
             color: kTeal.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: kTeal, size: 20),
+          child: Icon(icon, color: proTeal(context), size: 20),
         ),
         const SizedBox(height: 4),
         Text(
