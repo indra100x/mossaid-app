@@ -1,10 +1,10 @@
 services:
   db:
-    image: postgis/postgis:16-3.4-alpine
+    image: postgres:16-alpine
     environment:
       POSTGRES_USER: mossaid
       POSTGRES_PASSWORD: mossaid
-      POSTGRES_DB: mossaid
+      POSTGRES_DB: mossaid_simple
     ports:
       - "5433:5432"
     volumes:
@@ -15,89 +15,23 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6380:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./api
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://mossaid:mossaid@db:5432/mossaid
-      DATABASE_URL_SYNC: postgresql+psycopg2://mossaid:mossaid@db:5432/mossaid
-      REDIS_URL: redis://redis:6379/0
-      JWT_SECRET_KEY: dev-secret-key-change-in-prod
       APP_ENV: local
-      DEBUG: "true"
-      # Phase 3 secrets/observability — set in .env or the shell, never committed.
-      # Empty/missing values keep safe local defaults (Sentry/FCM disabled).
-      SENTRY_DSN: ${SENTRY_DSN:-}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      PROMETHEUS_ENABLED: ${PROMETHEUS_ENABLED:-true}
-      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
-      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
-      # Admin dashboard password login (local-dev default below is the bcrypt
-      # hash of a throwaway password — override both vars in any shared/prod
-      # deploy; empty ADMIN_PASSWORD_HASH disables the endpoint entirely).
-      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-$$2b$$12$$mt7MxJTundPl10NY9hJEE.gyykt1QuUbLrlBcFcX3o92PLP09R8Mq}
-      # Browser origins allowed to call the API (admin dashboard hostname in prod).
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
-      # Chargily sandbox by default; prod deploy overrides with live keys.
-      CHARGILY_API_KEY: ${CHARGILY_API_KEY:-test_6f2d8e2a-1234-4a5b-9c9d-test_sandbox_key}
-      CHARGILY_API_SECRET: ${CHARGILY_API_SECRET:-test_sandbox_secret_do_not_use_in_prod}
-      CHARGILY_API_URL: ${CHARGILY_API_URL:-https://pay.chargily.net/api/v2}
-      CHARGILY_WEBHOOK_SECRET: ${CHARGILY_WEBHOOK_SECRET:-test_webhook_secret}
-      CHARGILY_SANDBOX: ${CHARGILY_SANDBOX:-true}
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: mossaid_simple
+      DB_USERNAME: mossaid
+      DB_PASSWORD: mossaid
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-  # Prometheus scrapes api:8000/metrics using infra/prometheus.yml.
-  # Profile-gated so plain `docker compose up` is unchanged.
-  # Usage: docker compose --profile observability up prometheus
-  prometheus:
-    image: prom/prometheus:v2.53.0
-    profiles: ["observability"]
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./infra/alerts.yml:/etc/prometheus/alerts.yml:ro
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-    depends_on:
-      - api
-
-  # TLS-terminating edge gateway (see infra/nginx.conf).
-  # Needs a cert at infra/certs/{fullchain.pem,privkey.pem} — self-signed is
-  # fine locally (see README), real cert in prod. Profile-gated likewise.
-  # Usage: docker compose --profile gateway up nginx
-  nginx:
-    image: nginx:1.27-alpine
-    profiles: ["gateway"]
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./infra/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./infra/certs:/etc/nginx/certs:ro
-    depends_on:
-      - api
 
 volumes:
   pgdata:

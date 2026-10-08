@@ -1,98 +1,81 @@
-# Mossaid — Marketplace
+# Mossaid Simple — crafts marketplace (Laravel + Flutter + Postgres)
 
-Two-sided marketplace connecting clients with craftspeople across Algeria.
-
-## Architecture
-See `system-architecture.md` (section 4 for FastAPI module layout) and `product-evaluation.md`.
-
-## Project Structure
+Simplified reboot of Mossaid on branch `simple/laravel-marketplace`.
+**No payments.** Focus: portfolio posts, job requests, likes/comments, and
+chat that opens **only after a craftsman accepts a job**.
 
 ```
 .
-├── backend/            # FastAPI (Python 3.12) — see backend/README.md
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── core/       # config, database
-│   │   ├── api/        # health
-│   │   └── modules/    # auth, users, discovery, bookings, chat, payments, reviews, notifications, admin
-│   ├── alembic/        # migrations
-│   └── tests/          # pytest
-├── app/                # Flutter (iOS + Android) — see app/README.md
-├── admin/              # Next.js admin dashboard — see admin/README.md
-├── docker-compose.yml  # Postgres 16 + Redis 7 + FastAPI
-└── .github/workflows/ci.yml  # ruff, mypy, pytest per PR
+├── api/            # Laravel 13 JSON API (Sanctum tokens, Postgres)
+├── app-simple/     # Flutter app (email+password, feed, polling chat)
+└── docker-compose.yml  # Postgres 16 + API
 ```
 
-## Local Dev
+## Run it
 
 ```bash
-# Backend API + DB + Redis
 docker compose up --build
-# API at http://localhost:8000 — docs http://localhost:8000/docs — health http://localhost:8000/health
-# First run (or after pulling new migrations):
-docker compose exec api alembic upgrade head
+# API → http://localhost:8000/api/health
+```
 
-# Or run backend directly (requires local Postgres/Redis)
-cd backend
-pip install -e ".[dev]"
-ruff check . && mypy . && pytest -q
-uvicorn app.main:app --reload
+Or run the API locally (needs local Postgres):
 
-# Flutter
-cd app
+```bash
+cd api
+composer install
+cp .env.example .env   # set DB_* to your Postgres
+php artisan migrate
+php artisan serve      # :8000
+```
+
+Flutter:
+
+```bash
+cd app-simple
 flutter pub get && flutter analyze && flutter test
-flutter run
-
-# Admin (no terminal skills needed — just log in with the dashboard form)
-cd admin
-npm ci && npm run lint && npm run build
-npm run dev  # http://localhost:3000 — login: admin / polo@2013 (local default)
-# Session renews itself; logout is in the header. Prod credentials come from
-# ADMIN_USERNAME / ADMIN_PASSWORD_HASH env (bcrypt hash, see backend/.env.example).
+flutter run --dart-define=API_URL=http://localhost:8000/api
+# Android emulator → API_URL=http://10.0.2.2:8000/api
 ```
 
-## Migrations
+## How it works (both directions)
+
+| Who | Does what |
+|---|---|
+| **Craftsman** | Registers (`role=craftsman`), publishes portfolio **posts** (title, trade, city, price hint, photos). Browses open **jobs**, **accepts** one → chat opens. |
+| **Client** | Registers (`role=client`), browses/searches posts, **likes** (toggle) + **comments**. Posts **job requests** (trade, city, budget). Chats after accept, marks **completed**. |
+| **Chat** | `GET/POST /jobs/{id}/messages` — polling (`?after_id=`, Flutter polls every 5s). `403` until `status=accepted`. Non-participants always `403`. |
+
+## API cheatsheet
+
+```
+POST /api/auth/register {name,email,password,password_confirmation,role,phone?,trade?,city?,bio?} → {user,token}
+POST /api/auth/login {email,password} → {user,token}
+GET  /api/auth/me · POST /api/auth/logout
+
+GET  /api/posts?trade=&city=&q=          # craftsman portfolio feed
+POST /api/posts                          # craftsman only
+GET/PATCH/DELETE /api/posts/{id}
+POST /api/posts/{id}/like                # toggle → {liked,likes_count}
+GET/POST /api/posts/{id}/comments
+
+GET  /api/jobs?trade=&city=&status=&q=&mine=1
+POST /api/jobs                           # client only
+POST /api/jobs/{id}/accept               # craftsman, open→accepted (opens chat)
+POST /api/jobs/{id}/complete             # client, accepted→completed
+POST /api/jobs/{id}/cancel
+GET/POST /api/jobs/{id}/messages         # only after accept, participants only
+```
+
+## Tests
 
 ```bash
-cd backend
-alembic revision --autogenerate -m "describe change"
-alembic upgrade head
-# Inside Docker:
-docker compose exec api alembic upgrade head
+cd api && php artisan test   # MarketplaceTest: full flow incl. chat-before-accept 403
 ```
 
-## CI
+## Notes / limits (intentional for v1)
 
-GitHub Actions runs on every PR to `main`:
-- backend: `ruff check`, `mypy`, `pytest`
-- admin: `npm run lint`, `npm run build`
-- app: `flutter analyze`, `flutter test`
-
-## Production Checklist
-
-```bash
-# 1. Secrets — export in the deploy env (never commit real values)
-export JWT_SECRET_KEY="..." SENTRY_DSN="..." \
-  FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}' \
-  ADMIN_USERNAME="admin" ADMIN_PASSWORD_HASH="$(python -c "from app.core.security import hash_password; print(hash_password('...'))")" \
-  CHARGILY_API_KEY="..." CHARGILY_API_SECRET="..." \
-  CHARGILY_WEBHOOK_SECRET="..." CHARGILY_SANDBOX="false"
-# See backend/.env.example for the full list; docker-compose.yml passes
-# these through with safe local defaults (Sentry/FCM disabled when empty).
-
-# 2. Sandbox money-path verification (human review required before going live)
-cd backend && pytest tests/test_e2e_money_paths.py -v
-# Covers: checkout(pending) → webhook paid(held/escrow) → release, dispute
-# freeze → admin resolve, webhook replay idempotency, notifications, audit.
-
-# 3. Observability
-docker compose --profile observability up prometheus  # :9090, scrapes api:8000/metrics
-# Alert rules (infra/alerts.yml): ApiDown, High5xxRate, PaymentDisputeSpike —
-# wire Prometheus Alertmanager to your paging channel.
-
-# 4. TLS edge gateway (rate limits auth + payments, blocks external /metrics)
-openssl req -x509 -newkey rsa:2048 -keyout infra/certs/privkey.pem \
-  -out infra/certs/fullchain.pem -days 90 -nodes -subj "/CN=example.com"  # local only
-# Prod: replace with a real cert (e.g. Let's Encrypt) at the same paths.
-docker compose --profile gateway up nginx  # :80 → https, :443 TLS
-```
+- Auth is email+password via Sanctum (per your choice). No OTP, no roles beyond client/craftsman.
+- No queue table clash: Laravel's internal queue lives in `jobs`; marketplace jobs live in `job_requests`.
+- Search uses `ILIKE` (Postgres). No realtime sockets — polling only.
+- Photos are URL strings (no uploads yet). No admin panel, no push, no escrow.
+- Your previous FastAPI work is safe on `main` (+ stashed WIP: `stash@{0}` on main).
