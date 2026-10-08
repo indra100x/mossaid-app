@@ -11,11 +11,22 @@ chat that opens **only after a craftsman accepts a job**.
 └── docker-compose.yml  # Postgres 16 + API
 ```
 
-## Run it
+## Run it (dev)
 
 ```bash
 docker compose up --build
 # API → http://localhost:8000/api/health
+```
+
+## Run it (prod — nginx + PHP-FPM, one container)
+
+```bash
+cd api && php artisan key:generate --show   # copy output
+export APP_KEY="base64:..."
+docker compose -f docker-compose.prod.yml up -d --build
+curl http://localhost/api/health
+# API_PORT=8080 docker compose -f docker-compose.prod.yml up -d  # if port 80 taken
+# DB_MIGRATE=false  # skip migrations on start (default true)
 ```
 
 Or run the API locally (needs local Postgres):

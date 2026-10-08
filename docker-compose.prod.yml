@@ -1,0 +1,53 @@
+# Production stack: nginx + PHP-FPM Laravel + Postgres.
+# Usage:
+#   cd api && php artisan key:generate --show   # copy the output
+#   export APP_KEY="base64:..."
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   curl http://localhost/api/health
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-mossaid}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mossaid}
+      POSTGRES_DB: ${DB_DATABASE:-mossaid_simple}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-mossaid}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.prod
+    ports:
+      - "${API_PORT:-80}:80"
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: ${APP_URL:-http://localhost}
+      APP_KEY: ${APP_KEY:?APP_KEY must be exported (cd api && php artisan key:generate --show)}
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-mossaid_simple}
+      DB_USERNAME: ${DB_USERNAME:-mossaid}
+      DB_PASSWORD: ${DB_PASSWORD:-mossaid}
+      DB_MIGRATE: ${DB_MIGRATE:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  pgdata:
