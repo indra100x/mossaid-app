@@ -26,7 +26,7 @@ void main() {
     expect(find.text('Mossaid'), findsOneWidget);
     expect(find.text('Login'), findsOneWidget);
     expect(find.text('Create account'), findsOneWidget);
-    expect(find.textContaining('1.0.9'), findsOneWidget);
+    expect(find.textContaining('1.0.10'), findsOneWidget);
 
     // Tapping login opens the auth screen in login mode.
     await tester.tap(find.text('Login'));
@@ -74,6 +74,34 @@ void main() {
         if (!Strings.hasAr(k)) k,
     ];
     expect(missing, isEmpty, reason: 'missing ar: $missing');
+  });
+
+  test('French covers every English key', () {
+    final missing = [
+      for (final k in Strings.keys)
+        if (!Strings.hasFr(k)) k,
+    ];
+    expect(missing, isEmpty, reason: 'missing fr: $missing');
+  });
+
+  testWidgets('Landing renders in French (no RTL)', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final api = ApiClient(baseUrl: 'http://localhost:8000/api');
+    final session = Session(api)..loaded = true;
+    final loc = AppLocale();
+    await loc.set('fr');
+    await tester.pumpWidget(
+      MossaidSimple(
+        session: session,
+        api: api,
+        theme: AppTheme(),
+        locale: loc,
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Connexion'), findsOneWidget);
+    expect(find.text('Créer un compte'), findsOneWidget);
   });
 
   testWidgets('Landing renders in Arabic with RTL', (tester) async {

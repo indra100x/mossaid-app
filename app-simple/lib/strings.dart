@@ -15,6 +15,7 @@ class AppLocale extends ChangeNotifier {
       _locale = switch (prefs.getString('locale')) {
         'en' => const Locale('en'),
         'ar' => const Locale('ar'),
+        'fr' => const Locale('fr'),
         _ => null,
       };
     } catch (_) {}
@@ -25,6 +26,7 @@ class AppLocale extends ChangeNotifier {
     _locale = switch (code) {
       'en' => const Locale('en'),
       'ar' => const Locale('ar'),
+      'fr' => const Locale('fr'),
       _ => null,
     };
     try {
@@ -37,19 +39,23 @@ class AppLocale extends ChangeNotifier {
 
 /// All user-visible strings. `tr` picks Arabic when the app locale is Arabic.
 class Strings {
-  static bool isAr(BuildContext context) =>
-      Localizations.localeOf(context).languageCode == 'ar';
+  static bool isAr(BuildContext context) => lang(context) == 'ar';
 
-  /// Every key that must exist in both languages (used by tests).
+  static String lang(BuildContext context) =>
+      Localizations.localeOf(context).languageCode;
+
+  /// Every key that must exist in all languages (used by tests).
   static Iterable<String> get keys => _en.keys;
   static bool hasAr(String key) => _ar.containsKey(key);
+  static bool hasFr(String key) => _fr.containsKey(key);
 
   static String t(
     BuildContext context,
     String key, [
     Map<String, String> params = const {},
   ]) {
-    final map = isAr(context) ? _ar : _en;
+    final l = lang(context);
+    final map = l == 'ar' ? _ar : l == 'fr' ? _fr : _en;
     var s = map[key] ?? _en[key] ?? key;
     params.forEach((k, v) => s = s.replaceAll('{$k}', v));
     return s;
@@ -396,5 +402,177 @@ class Strings {
     'upload_timeout': 'انتهت مهلة الرفع. جرّب صورة أصغر.',
     'upload_failed': 'فشل الرفع: {e}',
     'photo_failed': 'فشلت الصورة: {e}',
+  };
+
+  static const _fr = {
+    // Landing
+    'tagline': 'Des artisans de confiance en un clic',
+    'landing_sub':
+        'Les clients publient des jobs · Les artisans montrent leur travail · Le chat s\'ouvre après accord.',
+    'login': 'Connexion',
+    'create_account': 'Créer un compte',
+    'perk_discover': 'Découvrir',
+    'perk_chat': 'Chat après accord',
+    'perk_rated': 'Pros notés',
+    'checking_server': 'Vérification du serveur…',
+    'server_ok': 'Serveur joignable ✓',
+    'server_down': 'Serveur injoignable — vérifiez le Wi-Fi / serveur',
+    // Auth
+    'welcome_back': 'Bon retour',
+    'join_title': 'Rejoindre Mossaid',
+    'login_blurb': 'Connectez-vous pour trouver des artisans ou suivre vos jobs.',
+    'register_blurb':
+        'Créez votre compte — les clients publient, les artisans se font découvrir.',
+    'segment_login': 'Connexion',
+    'segment_register': 'Inscription',
+    'full_name': 'Nom complet',
+    'role_client': 'Client',
+    'role_craftsman': 'Artisan',
+    'trade_label': 'Métier (peintre, plombier…)',
+    'city_optional': 'Ville (optionnel)',
+    'email': 'E-mail',
+    'password': 'Mot de passe',
+    'password_min': 'Mot de passe (8+ caractères)',
+    'btn_create': 'Créer le compte',
+    'btn_login': 'Se connecter',
+    'no_account': 'Pas de compte ? Créez-en un',
+    'have_account': 'Déjà inscrit ? Connectez-vous',
+    'forgot': 'Mot de passe oublié ?',
+    'v_name': 'Le nom est requis',
+    'v_email': "L'e-mail est requis",
+    'v_email_bad': 'Entrez un e-mail valide',
+    'v_password': 'Le mot de passe est requis',
+    'v_password_min': '8 caractères minimum',
+    // Home
+    'salam': 'Salam, {name} 👋',
+    'tab_discover': 'Découvrir',
+    'tab_jobs': 'Jobs',
+    'tab_alerts': 'Alertes',
+    'tab_account': 'Compte',
+    'tab_mywork': 'Mes œuvres',
+    'tab_requests': 'Demandes',
+    // Posts
+    'search_crafts': 'Chercher peintre, plombier…',
+    'publish_work': 'Publier mon travail',
+    'no_posts': 'Aucun post — artisans, publiez le premier ! 👆',
+    'retry': 'Réessayer',
+    'chip_all': 'Tous',
+    'new_craftsman': 'Nouvel artisan',
+    'comments_title': 'Commentaires ({n})',
+    'comment_hint': 'Ajouter un commentaire…',
+    // Jobs
+    'search_jobs': 'Chercher des jobs…',
+    'status_all': 'tous',
+    'status_open': 'ouverts',
+    'status_accepted': 'acceptés',
+    'status_completed': 'terminés',
+    'status_cancelled': 'annulés',
+    'post_job_btn': 'Publier une demande',
+    'no_jobs': 'Aucun job — clients, publiez la première demande ! 👆',
+    // Post form
+    'showcase_title': 'Montrez votre travail',
+    'f_title': 'Titre',
+    'f_title_hint_post': 'Donnez un titre à votre post',
+    'f_trade': 'Métier',
+    'f_trade_hint': 'Métier (peintre, plombier, électricien…)',
+    'f_trade_required': 'Le métier est requis',
+    'f_pick_trade': 'Choisissez votre métier',
+    'f_city': 'Ville',
+    'f_price': 'Prix (DZD)',
+    'f_desc_work': 'Décrivez travail, expérience, matériaux…',
+    'f_desc_min': 'Plus de détails = plus de confiance',
+    'f_add_photo': 'Ajouter une photo',
+    'f_publish': 'Publier le post',
+    // Job form
+    'job_title': 'Décrivez votre besoin',
+    'f_need': 'De quoi avez-vous besoin ? (ex. repeindre le salon)',
+    'f_need_trade': 'Métier recherché',
+    'f_budget': 'Budget DZD (optionnel)',
+    'f_job_details': 'Détails : surface, matériaux, délais…',
+    'f_job_details_min': 'Détaillez pour recevoir des réponses',
+    'f_cover': 'Ajouter une photo du job (optionnel)',
+    'f_post_job': 'Publier la demande',
+    'f_title_required': 'Le titre est requis',
+    'f_required': 'Requis',
+    // Job detail
+    'accept_open_chat': 'Accepter → ouvrir le chat',
+    'mark_completed': 'Marquer terminé',
+    'cancel': 'Annuler',
+    'rate_craftsman': "Noter l'artisan",
+    'thanks_review': 'Merci pour votre avis ! ⭐',
+    'chat_live': 'Chat (actualisé toutes les 5s)',
+    'say_salam': 'Dites salam ! 👋',
+    'message_hint': 'Message…',
+    'send_failed': "Échec d'envoi : {e}",
+    'load_job_failed': 'Job introuvable : {e}',
+    'tl_posted': 'Publié',
+    'tl_accepted': 'Accepté',
+    'tl_done': 'Terminé',
+    'tl_cancelled': 'Ce job a été annulé',
+    // Review dialog
+    'rate_title': 'Noter cet artisan',
+    'rate_hint': "Qu'avez-vous apprécié ? (optionnel)",
+    'later': 'Plus tard',
+    'send_review': "Envoyer l'avis",
+    // Craftsman profile
+    'reviews_title': 'Avis ({n})',
+    'no_reviews': 'Aucun avis — soyez le premier après un job !',
+    'my_trade': 'Mon métier',
+    // Notifications
+    'alerts_title': 'Alertes',
+    'mark_all_read': 'Tout marquer lu',
+    'no_alerts': 'Rien pour linstant — accords et messages ici.',
+    'nt_accepted_t': '{actor} a accepté votre job',
+    'nt_accepted_b': 'Le chat est ouvert — discutez 🤝',
+    'nt_message_t': 'Nouveau message de {actor}',
+    'nt_completed_t': 'Job terminé',
+    'nt_completed_b': '{actor} a clôturé le job',
+    'nt_review_t': 'Nouvel avis {rating}⭐',
+    'nt_review_b': '{actor} a noté votre travail',
+    // Account
+    'edit_profile': 'Modifier le profil',
+    'edit_profile_sub': 'Nom, téléphone, métier, ville, bio',
+    'my_jobs': 'Mes jobs',
+    'my_jobs_sub_client': 'Suivez demandes et chats ici',
+    'my_jobs_sub_craft': 'Travail accepté et demandes ici',
+    'marketplace': 'Marketplace',
+    'marketplace_sub_client': 'Parcourez les artisans',
+    'marketplace_sub_craft': 'Vos posts sont sous Posts',
+    'appearance': 'Apparence',
+    'appearance_dark': 'Mode sombre — toucher pour clair',
+    'appearance_light': 'Mode clair — toucher pour sombre',
+    'language': 'Langue / اللغة',
+    'language_sub': 'English · العربية',
+    'logout': 'Déconnexion',
+    // Profile edit
+    'edit_title': 'Modifier le profil',
+    'f_phone': 'Téléphone (optionnel)',
+    'f_bio': 'Bio (optionnel)',
+    'save': 'Enregistrer',
+    // Forgot password
+    'reset_title': 'Mot de passe oublié',
+    'reset_step1': 'Entrez votre e-mail pour recevoir un code.',
+    'send_code': 'Envoyer le code',
+    'code_is': 'Code : {code} (entrez-le ci-dessous)',
+    'code_sent': 'Si cet e-mail existe, un code a été envoyé.',
+    'code_label': 'Code à 6 chiffres',
+    'new_password': 'Nouveau mot de passe (8+)',
+    'change_password': 'Changer le mot de passe',
+    'code_hint': 'Le code fait 6 chiffres',
+    'pass_hint': '8 caractères minimum',
+    'password_changed': 'Mot de passe changé — connectez-vous.',
+    // Errors / misc
+    'post_word': 'Post',
+    'job_word': 'Job',
+    'timeout': 'Serveur injoignable (délai). Est-il lancé ?',
+    'no_connection': 'Pas de connexion au serveur ({e}).',
+    'conn_failed': 'Échec de connexion : {e}',
+    'load_failed': 'Chargement impossible : {e}',
+    'load_post_failed': 'Post introuvable : {e}',
+    'op_failed': 'Échec : {e}',
+    'reach_failed': 'Serveur injoignable : {e}',
+    'upload_timeout': 'Délai dépassé. Essayez une photo plus petite.',
+    'upload_failed': 'Échec dupload : {e}',
+    'photo_failed': 'Photo échouée : {e}',
   };
 }

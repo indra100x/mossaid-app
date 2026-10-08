@@ -40,13 +40,14 @@ class MossaidSimple extends StatelessWidget {
       listenable: Listenable.merge([session, theme, locale]),
       builder: (_, __) => AppThemeScope(
         theme: theme,
+        locale: locale,
         child: MaterialApp(
           title: 'Mossaid',
           theme: buildTheme(),
           darkTheme: buildDarkTheme(),
           themeMode: theme.mode,
           locale: locale.locale,
-          supportedLocales: const [Locale('en'), Locale('ar')],
+          supportedLocales: const [Locale('en'), Locale('ar'), Locale('fr')],
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
@@ -68,19 +69,52 @@ class MossaidSimple extends StatelessWidget {
   }
 }
 
-/// Makes the [AppTheme] reachable from any page for the mode toggle.
+/// Makes the [AppTheme] + [AppLocale] reachable from any page.
 class AppThemeScope extends InheritedWidget {
-  const AppThemeScope({super.key, required this.theme, required super.child});
+  const AppThemeScope({
+    super.key,
+    required this.theme,
+    required this.locale,
+    required super.child,
+  });
   final AppTheme theme;
+  final AppLocale locale;
 
-  static AppTheme of(BuildContext context) {
+  static AppThemeScope _scope(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppThemeScope>();
     assert(scope != null, 'AppThemeScope not found above.');
-    return scope!.theme;
+    return scope!;
   }
 
+  static AppTheme themeOf(BuildContext context) => _scope(context).theme;
+  static AppLocale localeOf(BuildContext context) => _scope(context).locale;
+
+  /// Back-compat: existing callers use `AppThemeScope.of(context)` for theme.
+  static AppTheme of(BuildContext context) => themeOf(context);
+
   @override
-  bool updateShouldNotify(AppThemeScope oldWidget) => theme != oldWidget.theme;
+  bool updateShouldNotify(AppThemeScope oldWidget) =>
+      theme != oldWidget.theme || locale != oldWidget.locale;
+}
+
+/// Globe button opening English / Français / العربية — same spots as theme.
+class LanguageMenuButton extends StatelessWidget {
+  const LanguageMenuButton({super.key, this.color});
+  final Color? color;
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppThemeScope.localeOf(context);
+    return PopupMenuButton<String>(
+      tooltip: Strings.t(context, 'language'),
+      icon: Icon(Icons.language_outlined, color: color),
+      onSelected: (v) => loc.set(v),
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 'ar', child: Text('العربية')),
+        PopupMenuItem(value: 'fr', child: Text('Français')),
+        PopupMenuItem(value: 'en', child: Text('English')),
+      ],
+    );
+  }
 }
 
 /// Moon/sun button — drop into any AppBar `actions` (or overlay).
@@ -393,7 +427,7 @@ class TradeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = vivid(context, tradeColor(trade));
-    final label = MetaCache.label(trade, ar: Strings.isAr(context));
+    final label = MetaCache.label(trade, lang: Strings.lang(context));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -787,26 +821,16 @@ class _LandingScreenState extends State<LandingScreen> {
               child: const ThemeToggleButton(color: Colors.white),
             ),
           ),
-          // Language toggle (other corner).
+          // Language menu (other corner).
           Positioned(
             top: MediaQuery.of(context).padding.top + 6,
             left: 8,
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.22),
-                borderRadius: BorderRadius.circular(20),
+                shape: BoxShape.circle,
               ),
-              child: TextButton(
-                onPressed: () =>
-                    widget.locale.set(Strings.isAr(context) ? 'en' : 'ar'),
-                child: Text(
-                  Strings.isAr(context) ? 'EN' : 'عربي',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
+              child: const LanguageMenuButton(color: Colors.white),
             ),
           ),
         ],
@@ -903,7 +927,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ? Strings.t(context, 'welcome_back')
               : Strings.t(context, 'join_title'),
         ),
-        actions: const [ThemeToggleButton()],
+        actions: const [LanguageMenuButton(), ThemeToggleButton()],
       ),
       body: Center(
         child: ConstrainedBox(
@@ -1225,7 +1249,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        actions: const [ThemeToggleButton()],
+        actions: const [LanguageMenuButton(), ThemeToggleButton()],
       ),
       body: pages[tab],
       bottomNavigationBar: NavigationBar(
@@ -1364,7 +1388,7 @@ class _PostsTabState extends State<PostsTab> {
                       label: Text(
                         MetaCache.label(
                           (t['slug'] ?? '') as String,
-                          ar: Strings.isAr(context),
+                          lang: Strings.lang(context),
                         ),
                       ),
                       selected: trade == t['slug'],
@@ -1547,7 +1571,7 @@ class _PostFormScreenState extends State<PostFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(Strings.t(context, 'showcase_title')),
-        actions: const [ThemeToggleButton()],
+        actions: const [LanguageMenuButton(), ThemeToggleButton()],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -1655,7 +1679,7 @@ class _PostFormScreenState extends State<PostFormScreen> {
                       DropdownMenuItem(
                         value: s,
                         child: Text(
-                          MetaCache.label(s, ar: Strings.isAr(context)),
+                          MetaCache.label(s, lang: Strings.lang(context)),
                         ),
                       ),
                   ],
@@ -1694,7 +1718,7 @@ class _PostFormScreenState extends State<PostFormScreen> {
                                   child: Text(
                                     MetaCache.cityLabel(
                                       c,
-                                      ar: Strings.isAr(context),
+                                      lang: Strings.lang(context),
                                     ),
                                   ),
                                 ),
@@ -1854,7 +1878,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(post!['title'] ?? Strings.t(context, 'post_word')),
-        actions: const [ThemeToggleButton()],
+        actions: const [LanguageMenuButton(), ThemeToggleButton()],
       ),
       body: ListView(
         padding: const EdgeInsets.all(12),
@@ -2266,7 +2290,7 @@ class _JobsTabState extends State<JobsTab> {
                                       Text(
                                         MetaCache.cityLabel(
                                           j['city'],
-                                          ar: Strings.isAr(context),
+                                          lang: Strings.lang(context),
                                         ),
                                         style: TextStyle(
                                           color: muted(context),
@@ -2397,7 +2421,7 @@ class _JobFormScreenState extends State<JobFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(Strings.t(context, 'job_title')),
-        actions: const [ThemeToggleButton()],
+        actions: const [LanguageMenuButton(), ThemeToggleButton()],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -2489,7 +2513,7 @@ class _JobFormScreenState extends State<JobFormScreen> {
                                   child: Text(
                                     MetaCache.label(
                                       s,
-                                      ar: Strings.isAr(context),
+                                      lang: Strings.lang(context),
                                     ),
                                   ),
                                 ),
@@ -2528,7 +2552,7 @@ class _JobFormScreenState extends State<JobFormScreen> {
                                   child: Text(
                                     MetaCache.cityLabel(
                                       c,
-                                      ar: Strings.isAr(context),
+                                      lang: Strings.lang(context),
                                     ),
                                   ),
                                 ),
@@ -2723,7 +2747,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(job!['title'] ?? Strings.t(context, 'job_word')),
-        actions: const [ThemeToggleButton()],
+        actions: const [LanguageMenuButton(), ThemeToggleButton()],
       ),
       body: Column(
         children: [
@@ -2766,7 +2790,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                         Text(
                           MetaCache.cityLabel(
                             job!['city'],
-                            ar: Strings.isAr(context),
+                            lang: Strings.lang(context),
                           ),
                           style: TextStyle(color: muted(context)),
                         ),
@@ -3026,7 +3050,7 @@ class AccountTab extends StatelessWidget {
                             Text(
                               MetaCache.cityLabel(
                                 u['city'],
-                                ar: Strings.isAr(context),
+                                lang: Strings.lang(context),
                               ),
                               style: TextStyle(
                                 color: muted(context),
@@ -3109,6 +3133,8 @@ class AccountTab extends StatelessWidget {
                 subtitle: Text(
                   locale.code == 'ar'
                       ? 'العربية'
+                      : locale.code == 'fr'
+                      ? 'Français'
                       : locale.code == 'en'
                       ? 'English'
                       : Strings.t(context, 'language_sub'),
@@ -3120,21 +3146,21 @@ class AccountTab extends StatelessWidget {
                     builder: (c) => SimpleDialog(
                       title: Text(Strings.t(context, 'language')),
                       children: [
-                        for (final opt in const ['ar', 'en', 'system'])
+                        for (final opt in const ['ar', 'fr', 'en', 'system'])
                           SimpleDialogOption(
                             onPressed: () => Navigator.pop(c, opt),
                             child: Row(
                               children: [
-                                if (locale.code == opt ||
-                                    (opt == 'system' &&
-                                        locale.code == 'system'))
+                                if (locale.code == opt)
                                   const Icon(Icons.check, size: 18),
                                 Text(
                                   opt == 'ar'
                                       ? 'العربية'
+                                      : opt == 'fr'
+                                      ? 'Français'
                                       : opt == 'en'
                                       ? 'English'
-                                      : 'System / النظام',
+                                      : 'System / Système / النظام',
                                 ),
                               ],
                             ),
@@ -3236,7 +3262,7 @@ class _CraftsmanProfileScreenState extends State<CraftsmanProfileScreen> {
         title: Text(
           (c['name'] ?? Strings.t(context, 'role_craftsman')) as String,
         ),
-        actions: const [ThemeToggleButton()],
+        actions: const [LanguageMenuButton(), ThemeToggleButton()],
       ),
       body: ListView(
         padding: const EdgeInsets.all(14),
@@ -3263,7 +3289,7 @@ class _CraftsmanProfileScreenState extends State<CraftsmanProfileScreen> {
                           Text(
                             MetaCache.cityLabel(
                               c['city'],
-                              ar: Strings.isAr(context),
+                              lang: Strings.lang(context),
                             ),
                             style: TextStyle(color: muted(context)),
                           ),
@@ -3714,7 +3740,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(Strings.t(context, 'edit_title')),
-        actions: const [ThemeToggleButton()],
+        actions: const [LanguageMenuButton(), ThemeToggleButton()],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -3752,7 +3778,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       DropdownMenuItem(
                         value: s,
                         child: Text(
-                          MetaCache.label(s, ar: Strings.isAr(context)),
+                          MetaCache.label(s, lang: Strings.lang(context)),
                         ),
                       ),
                   ],
@@ -3895,7 +3921,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(Strings.t(context, 'reset_title')),
-        actions: const [ThemeToggleButton()],
+        actions: const [LanguageMenuButton(), ThemeToggleButton()],
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -4046,7 +4072,7 @@ class PostCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        MetaCache.label(trade, ar: Strings.isAr(context)),
+                        MetaCache.label(trade, lang: Strings.lang(context)),
                         style: const TextStyle(
                           color: kTeal,
                           fontWeight: FontWeight.w700,
@@ -4119,7 +4145,7 @@ class PostCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      MetaCache.label(trade, ar: Strings.isAr(context)),
+                      MetaCache.label(trade, lang: Strings.lang(context)),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -4161,7 +4187,7 @@ class PostCard extends StatelessWidget {
                               children: [
                                 Flexible(
                                   child: Text(
-                                    '${u['name'] ?? ''}${(p['city'] ?? '') != '' ? ' · ${MetaCache.cityLabel(p['city'], ar: Strings.isAr(context))}' : ''}',
+                                    '${u['name'] ?? ''}${(p['city'] ?? '') != '' ? ' · ${MetaCache.cityLabel(p['city'], lang: Strings.lang(context))}' : ''}',
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       color: muted(context),

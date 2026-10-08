@@ -25,19 +25,24 @@ class MetaCache {
     loaded = true;
   }
 
-  static String label(String slug, {bool ar = false}) {
+  static String label(String slug, {String lang = 'en'}) {
     for (final t in trades) {
       if (t['slug'] == slug) {
-        if (ar) return (t['label_ar'] ?? t['label'] ?? slug) as String;
+        if (lang == 'ar') {
+          return (t['label_ar'] ?? t['label'] ?? slug) as String;
+        }
+        if (lang == 'fr') {
+          return (t['label_fr'] ?? t['label'] ?? slug) as String;
+        }
         return (t['label'] ?? slug) as String;
       }
     }
     return slug;
   }
 
-  static String cityLabel(String name, {bool ar = false}) {
-    if (ar) return citiesAr[name] ?? name;
-    return name;
+  static String cityLabel(String name, {String lang = 'en'}) {
+    if (lang == 'ar') return citiesAr[name] ?? name;
+    return name; // city names are already French
   }
 }
 
